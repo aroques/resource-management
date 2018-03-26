@@ -1,0 +1,17 @@
+#ifndef GLOBAL_CONSTANTS_H
+#define GLOBAL_CONSTANTS_H
+
+#define FIVE_HUNDRED_MILLION 500000000
+
+const unsigned int EXECV_SIZE = 6;
+const unsigned int SYSCLOCK_ID_IDX = 1;
+const unsigned int PCT_ID_IDX = 2;
+const unsigned int PID_IDX = 3;
+const unsigned int SCHEDULER_IDX = 4;
+
+const unsigned int MAX_RUNTIME = 20; // In seconds
+const unsigned int MAX_PROC_CNT = 18;
+
+const unsigned int MAX_NS_BEFORE_NEW_PROC = FIVE_HUNDRED_MILLION; // 500ms
+
+#endif

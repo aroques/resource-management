@@ -2,10 +2,9 @@
  *      Adapted from: https://www3.cs.stonybrook.edu/~skiena/392/programs/
  */
 
-#include "shared_memory.h"
 #include <stdbool.h>
 
-#define QUEUESIZE PROC_CTRL_TBL_SZE
+#define QUEUESIZE 18
 
 struct Queue {
         int q[QUEUESIZE+1];		/* body of queue */

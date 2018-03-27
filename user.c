@@ -31,7 +31,6 @@ int main (int argc, char *argv[]) {
     add_signal_handlers();
     srand(time(NULL) ^ getpid());
     setlocale(LC_NUMERIC, "");      // For comma separated integers in printf
-    unsigned int nanosecs;
 
     // Get shared memory IDs
     int sysclock_id = atoi(argv[SYSCLOCK_ID_IDX]);
@@ -57,12 +56,12 @@ int main (int argc, char *argv[]) {
             break;
         }
         
-        // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
-        send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
+        // Add MAX_PROC_CNT to message type to let OSS know we are done
+        send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
     }
 
-    // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
-    send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
+    // Add MAX_PROC_CNT to message type to let OSS know we are done
+    send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
 
     return 0;  
 }
@@ -94,7 +93,7 @@ void handle_sigterm(int sig) {
 struct clock get_time_to_request_release_rsc(struct clock sysclock) {
     unsigned int nanoseconds = get_nanosecs_to_request_release();
     struct clock time_to_request_release = sysclock;
-    increment_clock(&time_to_request_release, nanoseconds)
+    increment_clock(&time_to_request_release, nanoseconds);
     return time_to_request_release;
 }
 

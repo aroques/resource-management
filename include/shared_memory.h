@@ -1,7 +1,7 @@
 #ifndef SHARED_MEMORY_H
 #define SHARED_MEMORY_H
 
-#define MAX_PROC_CNT 18
+#define NUM_RSC_CLS 20
 
 #include <stdbool.h>
 #include "clock.h"
@@ -12,7 +12,7 @@ struct resource_descriptor {
 };
 
 struct resource_table {
-    struct resource_descriptor rsc_descs[MAX_PROC_CNT];
+    struct resource_descriptor rsc_descs[NUM_RSC_CLS];
 };
 
 int get_shared_memory();

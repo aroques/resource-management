@@ -11,6 +11,7 @@ const unsigned int PID_IDX = 4;
 
 const unsigned int MAX_RUNTIME = 20; // In seconds
 const unsigned int MAX_PROC_CNT = 18;
+const unsigned int NUM_RSC_CLS = 20;
 
 const unsigned int MAX_NS_BEFORE_NEW_PROC = FIVE_HUNDRED_MILLION; // 500ms
 

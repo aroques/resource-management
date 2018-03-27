@@ -29,6 +29,9 @@ void cleanup_and_exit();
 void fork_child(char** execv_arr, int child_idx, int pid);
 void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
+void allocate_rsc_tbl();
+struct resource_descriptor get_rsc_desc();
+unsigned int get_num_resources();
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -74,6 +77,7 @@ int main (int argc, char* argv[]) {
     // Shared Resource Table 
     rsc_tbl_id = get_shared_memory();
     rsc_tbl = (struct resource_table*) attach_to_shared_memory(rsc_tbl_id, 0);
+    allocate_rsc_tbl(rsc_tbl);
     // Shared resource message box for user processes to request/release resources 
     rsc_msg_box_id = get_message_queue();
     struct msgbuf rsc_msg_box = { .mtype = 1 };
@@ -253,4 +257,23 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
     unsigned int ns_before_next_proc = rand() % MAX_NS_BEFORE_NEW_PROC; 
     increment_clock(&sysclock, ns_before_next_proc);
     return sysclock;
+}
+
+void allocate_rsc_tbl(resource_table* rsc_tbl) {
+    int i;
+    for (int i = 0; i < NUM_RSC_CLS; i++) {
+        rsc_tbl[i] = get_rsc_desc();
+    }
+}
+
+struct resource_descriptor get_rsc_desc() {
+    struct resource_descriptor rsc_desc = {
+        .total = get_num_resources(),
+        .allocated = 0
+    };
+    return rsc_desc;
+}
+
+unsigned int get_num_resources() {
+    return (rand() % 10) + 1; // 1 - 10 inclusive
 }

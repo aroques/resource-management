@@ -34,25 +34,25 @@ int main (int argc, char *argv[]) {
 
     // Get shared memory IDs
     int sysclock_id = atoi(argv[SYSCLOCK_ID_IDX]);
-    int proc_ctrl_tbl_id = atoi(argv[PCT_ID_IDX]);
+    int rsc_tbl_id = atoi(argv[RSC_TBL_ID_IDX]);
+    int rsc_msg_box_id = atoi(argv[RSC_MSGBX_ID_IDX]);
     int pid = atoi(argv[PID_IDX]);
-    int scheduler_id = atoi(argv[SCHEDULER_IDX]);
     
     // Attach to shared memory
     struct clock* sysclock = attach_to_shared_memory(sysclock_id, 1);
-    struct process_ctrl_table* pct = attach_to_shared_memory(proc_ctrl_tbl_id, 0);
+    struct resource_table* rsc_tbl = attach_to_shared_memory(rsc_tbl_id, 0);
 
-    struct process_ctrl_block* pcb = &pct->pcbs[pid];
+    struct process_ctrl_block* pcb = &rsc_tbl->pcbs[pid];
     
-    struct msgbuf scheduler;
+    struct msgbuf rsc_msg_box;
     while(1) {
         // Blocking receive - wait until scheduled
-        receive_msg(scheduler_id, &scheduler, pid);
+        receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
         // Received message from OSS telling me to run
         pcb->status = RUNNING;
         
         if (will_terminate()) {
-            // Run for some random pct of time quantum
+            // Run for some random rsc_tbl of time quantum
             nanosecs = pcb->time_quantum / get_random_pct();
             pcb->last_run = nanosecs;
             increment_clock(&pcb->cpu_time_used, nanosecs);
@@ -61,7 +61,7 @@ int main (int argc, char *argv[]) {
         }
         
         // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
-        send_msg(scheduler_id, &scheduler, (pid + PROC_CTRL_TBL_SZE)); 
+        send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
     }
 
     pcb->status = TERMINATED;
@@ -72,7 +72,7 @@ int main (int argc, char *argv[]) {
     pcb->sys_time_used = subtract_clocks(pcb->time_finished, pcb->time_scheduled);
 
     // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
-    send_msg(scheduler_id, &scheduler, (pid + PROC_CTRL_TBL_SZE)); 
+    send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
 
     return 0;  
 }

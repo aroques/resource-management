@@ -16,12 +16,13 @@
 #include "clock.h"
 
 bool will_terminate();
-bool use_entire_timeslice();
 unsigned int get_random_pct();
-struct clock get_event_wait_time();
 void add_signal_handlers();
 void handle_sigterm(int sig);
+struct clock get_time_to_request_release_rsc(struct clock sysclock);
+unsigned int get_nanosecs_to_request_release();
 
+#define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
 const unsigned int CHANCE_TERMINATE = 4;
 const unsigned int MAX_CLAIMS = 3; 
@@ -41,21 +42,17 @@ int main (int argc, char *argv[]) {
     // Attach to shared memory
     struct clock* sysclock = attach_to_shared_memory(sysclock_id, 1);
     struct resource_table* rsc_tbl = attach_to_shared_memory(rsc_tbl_id, 0);
-
-    struct process_ctrl_block* pcb = &rsc_tbl->pcbs[pid];
     
     struct msgbuf rsc_msg_box;
+
+    struct clock time_to_request_release = get_time_to_request_release_rsc(*sysclock);
+
     while(1) {
         // Blocking receive - wait until scheduled
         receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
         // Received message from OSS telling me to run
-        pcb->status = RUNNING;
         
         if (will_terminate()) {
-            // Run for some random rsc_tbl of time quantum
-            nanosecs = pcb->time_quantum / get_random_pct();
-            pcb->last_run = nanosecs;
-            increment_clock(&pcb->cpu_time_used, nanosecs);
 
             break;
         }
@@ -63,13 +60,6 @@ int main (int argc, char *argv[]) {
         // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
         send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
     }
-
-    pcb->status = TERMINATED;
-
-    pcb->time_finished.seconds = sysclock->seconds;
-    pcb->time_finished.nanoseconds = sysclock->nanoseconds;
-
-    pcb->sys_time_used = subtract_clocks(pcb->time_finished, pcb->time_scheduled);
 
     // Add PROC_CTRL_TBL_SZE to message type to let OSS know we are done
     send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + PROC_CTRL_TBL_SZE)); 
@@ -83,13 +73,6 @@ bool will_terminate() {
 
 unsigned int get_random_pct() {
     return (rand() % 99) + 1;
-}
-
-struct clock get_event_wait_time() {
-    struct clock event_wait_time;
-    event_wait_time.seconds = rand() % 6;
-    event_wait_time.nanoseconds = rand() % 1001;
-    return event_wait_time;
 }
 
 void add_signal_handlers() {
@@ -106,4 +89,16 @@ void add_signal_handlers() {
 void handle_sigterm(int sig) {
     //printf("USER %d: Caught SIGTERM %d\n", getpid(), sig);
     _exit(0);
+}
+
+struct clock get_time_to_request_release_rsc(struct clock sysclock) {
+    unsigned int nanoseconds = get_nanosecs_to_request_release();
+    struct clock time_to_request_release = sysclock;
+    increment_clock(&time_to_request_release, nanoseconds)
+    return time_to_request_release;
+}
+
+unsigned int get_nanosecs_to_request_release() {
+    unsigned int lower_bound = 10000000;
+    return (rand() % (ONE_HUNDRED_MILLION - lower_bound)) + lower_bound;
 }

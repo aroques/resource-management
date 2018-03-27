@@ -81,8 +81,7 @@ int main (int argc, char* argv[]) {
     // Shared resource message box for user processes to request/release resources 
     rsc_msg_box_id = get_message_queue();
     struct msgbuf rsc_msg_box = { .mtype = 1 };
-    sprintf(rsc_msg_box.mtext, "");
-    
+    sprintf(rsc_msg_box.mtext, "");  
 
     // Holds all childpids
     childpids = malloc(sizeof(pid_t) * MAX_PROC_CNT);
@@ -240,7 +239,7 @@ void cleanup_and_exit() {
     terminate_children();
     printf("OSS: Removing message queues and shared memory\n");
     fprintf(fp, "OSS: Removing message queues and shared memory\n");
-    //remove_message_queue(scheduler_id);
+    remove_message_queue(rsc_msg_box_id);
     wait_for_all_children();
     cleanup_shared_memory(simulated_clock_id, sysclock);
     cleanup_shared_memory(rsc_tbl_id, rsc_tbl);

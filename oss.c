@@ -31,9 +31,9 @@ void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
 
 // Globals used in signal handler
-int simulated_clock_id, proc_ctrl_tbl_id, scheduler_id;
+int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
 struct clock* sysclock;                                 
-struct process_ctrl_table* pct;
+struct resource_table* rsc_tbl;
 int cleaning_up = 0;
 pid_t* childpids;
 FILE* fp;
@@ -64,10 +64,21 @@ int main (int argc, char* argv[]) {
     execv_arr[0] = "./user";
     execv_arr[EXECV_SIZE - 1] = NULL;
     
-    // Setup shared memory
+    /*
+     *  Setup shared memory
+     */
+    // Shared logical clock
     simulated_clock_id = get_shared_memory();
     sysclock = (struct clock*) attach_to_shared_memory(simulated_clock_id, 0);
     reset_clock(sysclock);
+    // Shared Resource Table 
+    rsc_tbl_id = get_shared_memory();
+    rsc_tbl = (struct resource_table*) attach_to_shared_memory(rsc_tbl_id, 0);
+    // Shared resource message box for user processes to request/release resources 
+    rsc_msg_box_id = get_message_queue();
+    struct msgbuf rsc_msg_box = { .mtype = 1 };
+    sprintf(rsc_msg_box.mtext, "");
+    
 
     // Holds all childpids
     childpids = malloc(sizeof(pid_t) * MAX_PROC_CNT);
@@ -124,18 +135,20 @@ int main (int argc, char* argv[]) {
 void fork_child(char** execv_arr, int child_idx, int pid) {
     if ((childpids[child_idx] = fork()) == 0) {
         // Child so...
-        char sysclock_id[10];
-        char pct_id[10];
-        char pid_str[5];
-        char schedulerid[10];
-        sprintf(sysclock_id, "%d", simulated_clock_id);
-        sprintf(pct_id, "%d", proc_ctrl_tbl_id);
-        sprintf(pid_str, "%d", pid);
-        sprintf(schedulerid, "%d", scheduler_id);
-        execv_arr[SYSCLOCK_ID_IDX] = sysclock_id;
-        execv_arr[PCT_ID_IDX] = pct_id;
-        execv_arr[PID_IDX] = pid_str;
-        execv_arr[SCHEDULER_IDX] = schedulerid;
+        char clock_id[10];
+        char rtbl_id[10];
+        char rmsgbox_id[10];
+        char p_id[5];
+        
+        sprintf(clock_id, "%d", simulated_clock_id);
+        sprintf(rtbl_id, "%d", rsc_tbl_id);
+        sprintf(rmsgbox_id, "%d", rsc_msg_box_id);
+        sprintf(p_id, "%d", pid);
+        
+        execv_arr[SYSCLOCK_ID_IDX] = clock_id;
+        execv_arr[RSC_TBL_ID_IDX] = rtbl_id;
+        execv_arr[RSC_MSGBX_ID_IDX] = rmsgbox_id;
+        execv_arr[PID_IDX] = p_id;
 
         execvp(execv_arr[0], execv_arr);
 
@@ -226,7 +239,7 @@ void cleanup_and_exit() {
     //remove_message_queue(scheduler_id);
     wait_for_all_children();
     cleanup_shared_memory(simulated_clock_id, sysclock);
-    //cleanup_shared_memory(proc_ctrl_tbl_id, pct);
+    cleanup_shared_memory(rsc_tbl_id, rsc_tbl);
     fclose(fp);
     exit(0);
 }

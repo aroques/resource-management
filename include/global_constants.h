@@ -5,9 +5,9 @@
 
 const unsigned int EXECV_SIZE = 6;
 const unsigned int SYSCLOCK_ID_IDX = 1;
-const unsigned int PCT_ID_IDX = 2;
-const unsigned int PID_IDX = 3;
-const unsigned int SCHEDULER_IDX = 4;
+const unsigned int RSC_TBL_ID_IDX = 2;
+const unsigned int RSC_MSGBX_ID_IDX = 3;
+const unsigned int PID_IDX = 4;
 
 const unsigned int MAX_RUNTIME = 20; // In seconds
 const unsigned int MAX_PROC_CNT = 18;

@@ -46,23 +46,23 @@ int main (int argc, char *argv[]) {
 
     struct clock time_to_request_release = get_time_to_request_release_rsc(*sysclock);
 
-    while(1) {
+   // while(1) {
         // Blocking receive - wait until scheduled
-        receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
+        //receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
         // Received message from OSS telling me to run
         
-        if (will_terminate()) {
+    //    if (will_terminate()) {
 
-            break;
-        }
+    //        break;
+    //    }
         
         // Add MAX_PROC_CNT to message type to let OSS know we are done
-        send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
-    }
+        //send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
+    //}
 
     // Add MAX_PROC_CNT to message type to let OSS know we are done
-    send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
-
+    //send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
+    printf("user: hello world!\n");
     return 0;  
 }
 

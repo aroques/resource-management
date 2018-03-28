@@ -56,7 +56,6 @@ void print_usage() {
     exit(0);
 }
 
-
 void set_timer(int duration) {
     struct itimerval value;
     value.it_interval.tv_sec = duration;

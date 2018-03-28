@@ -2,13 +2,14 @@
 #define SHARED_MEMORY_H
 
 #define NUM_RSC_CLS 20
+#define MAX_PROC_CNT 18
 
 #include <stdbool.h>
 #include "clock.h"
     
 struct resource_descriptor {
     unsigned int total;
-    unsigned int allocated;
+    unsigned int allocated[MAX_PROC_CNT];
 };
 
 struct resource_table {

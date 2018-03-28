@@ -32,6 +32,8 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock);
 void allocate_rsc_tbl(struct resource_table*);
 struct resource_descriptor get_rsc_desc();
 unsigned int get_num_resources();
+void init_allocated(unsigned int* allocated);
+unsigned int get_nanoseconds();
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -113,12 +115,12 @@ int main (int argc, char* argv[]) {
             print_and_write(buffer);
 
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
-            
-            break;
         }
         
-        sprintf(buffer, "\n");
-        print_and_write(buffer);
+        //sprintf(buffer, "\n");
+        //print_and_write(buffer);
+
+        increment_clock(sysclock, get_nanoseconds());
 
         // Calculate total elapsed real-time seconds
         gettimeofday(&tv_stop, NULL);
@@ -267,11 +269,22 @@ void allocate_rsc_tbl(struct resource_table* rsc_tbl) {
 struct resource_descriptor get_rsc_desc() {
     struct resource_descriptor rsc_desc = {
         .total = get_num_resources(),
-        .allocated = 0
     };
+    init_allocated(rsc_desc.allocated);
     return rsc_desc;
 }
 
 unsigned int get_num_resources() {
     return (rand() % 10) + 1; // 1 - 10 inclusive
+}
+
+unsigned int get_nanoseconds() {
+    return (rand() % 100) + 1; // 1 - 100 inclusive
+}
+
+void init_allocated(unsigned int* allocated) {
+    int i;
+    for (i = 0; i < MAX_PROC_CNT; i++) {
+        allocated[i] = 0;
+    }
 }

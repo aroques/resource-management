@@ -23,10 +23,11 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock);
 unsigned int get_nanosecs_to_request_release();
 void create_msg_that_contains_rsc(char* mtext);
 unsigned int get_random_resource();
+bool has_resource(struct resource_table* rsc_tbl);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
-const unsigned int CHANCE_TERMINATE = 4;
+const unsigned int CHANCE_TERMINATE = 5;
 const unsigned int MAX_CLAIMS = 3; 
 
 int main (int argc, char *argv[]) {
@@ -53,27 +54,23 @@ int main (int argc, char *argv[]) {
         if (compare_clocks(*sysclock, time_to_request_release) >= 0) {
 
             // IF amount of granted resources = 0 
-            // THEN request a resource
+            if (!has_resource) {
+                // Request a resource
+                create_msg_that_contains_rsc(rsc_msg_box.mtext);
+                send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+                // Blocking receive - wait until granted a resource
+                receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
+                // Granted a resource
+                if (will_terminate()) {
+                    break;
+                }
+            }
+            else {
+                // Determine if we are going to request or release a resource
 
-            // ELSE
-            // Determine if we are going to request or release a resource
-            
-
-            // Request a resource
-            create_msg_that_contains_rsc(rsc_msg_box.mtext);
-            send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
-            // Blocking receive - wait until granted a resource
-            receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
-            // Granted a resource
-            if (will_terminate()) {
-                break;
             }
         }
-        //Received message from OSS telling me to run
-    }
-
-    // Add MAX_PROC_CNT to message type to let OSS know we are done
-    //send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
+    } 
     printf("user: hello world!\n");
     return 0;  
 }
@@ -121,4 +118,16 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock) {
 unsigned int get_nanosecs_to_request_release() {
     unsigned int lower_bound = 10000000;
     return (rand() % (ONE_HUNDRED_MILLION - lower_bound)) + lower_bound;
+}
+
+bool has_resource(int pid, struct resource_table* rsc_tbl) {
+    unsigned int i;
+    unsigned int num_resources = 0;
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
+        if (num_resources > 0) {
+            return 1;
+        }
+    }
+    return 0;
 }

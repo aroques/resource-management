@@ -26,6 +26,8 @@ unsigned int get_random_resource();
 bool has_resource(struct resource_table* rsc_tbl);
 bool will_release_resource();
 unsigned int get_resouce_to_release(int pid, struct resource_table* rsc_tbl);
+void request_a_resource(int rsc_msg_box_id, int pid);
+void release_a_resource(int rsc_msg_box_id, int pid);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
@@ -43,28 +45,21 @@ int main (int argc, char *argv[]) {
     int rsc_tbl_id = atoi(argv[RSC_TBL_ID_IDX]);
     int rsc_msg_box_id = atoi(argv[RSC_MSGBX_ID_IDX]);
     int pid = atoi(argv[PID_IDX]);
-    
+
     // Attach to shared memory
     struct clock* sysclock = attach_to_shared_memory(sysclock_id, 1);
     struct resource_table* rsc_tbl = attach_to_shared_memory(rsc_tbl_id, 0);
-    
-    struct msgbuf rsc_msg_box;
 
     struct clock time_to_request_release = get_time_to_request_release_rsc(*sysclock);
     unsigned int resource_to_request, resource_to_release;
 
-   while(1) {
+    while(1) {
         if (compare_clocks(*sysclock, time_to_request_release) < 0) {
             continue;
         }
         // Time to request/release a resource 
         if (!has_resource) {
-            // Request a resource
-            create_msg_that_contains_rsc(rsc_msg_box.mtext);
-            send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
-            // Blocking receive - wait until granted a resource
-            receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
-            // Granted a resource
+            request_a_resource(rsc_msg_box_id, pid);
             if (will_terminate()) {
                 break;
             }
@@ -72,18 +67,10 @@ int main (int argc, char *argv[]) {
         else {
             // Determine if we are going to request or release a resource
             if (will_release_resource()) {
-                // Release a resource
-                resource_to_release = get_resouce_to_release(pid, rsc_tbl);
-                sprintf(rsc_msg_box.mtext, "%d", resource_to_release);
-                send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+                release_a_resource(rsc_msg_box_id, pid);
             }
             else {
-                // Request a resource
-                create_msg_that_contains_rsc(rsc_msg_box.mtext);
-                send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
-                // Blocking receive - wait until granted a resource
-                receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
-                // Granted a resource
+                request_a_resource(rsc_msg_box_id, pid);
                 if (will_terminate()) {
                     break;
                 }
@@ -94,6 +81,24 @@ int main (int argc, char *argv[]) {
     } 
     printf("user: hello world!\n");
     return 0;  
+}
+
+void release_a_resource(int rsc_msg_box_id, int pid) {
+    struct msgbuf rsc_msg_box;
+    unsigned int resource_to_release = get_resouce_to_release(pid, rsc_tbl);
+    sprintf(rsc_msg_box.mtext, "%d", resource_to_release);
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+    return;
+}
+
+void request_a_resource(int rsc_msg_box_id, int pid) {
+    struct msgbuf rsc_msg_box;
+    create_msg_that_contains_rsc(rsc_msg_box.mtext);
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+    // Blocking receive - wait until granted a resource
+    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
+    // Granted a resource
+    return;
 }
 
 unsigned int get_resouce_to_release(int pid, struct resource_table* rsc_tbl) {

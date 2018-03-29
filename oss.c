@@ -306,7 +306,7 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
         printf("P%-4d", i+1);
         // print all resources allocated for process i
         for (j = 0; j < NUM_RSC_CLS; j++) {
-            printf("%-4d", rsc_tbl->rsc_descs[i].allocated[j]);
+            printf("%-4d", rsc_tbl->rsc_descs[j].allocated[i]);
         }
         printf("\n");
     }

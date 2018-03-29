@@ -29,6 +29,7 @@ unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl);
 void request_a_resource(int rsc_msg_box_id, int pid);
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
 unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl);
+unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
@@ -87,7 +88,7 @@ void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     struct msgbuf rsc_msg_box;
     unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
     sprintf(rsc_msg_box.mtext, "%d", resource_to_release);
-    send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
     return;
 }
 
@@ -96,7 +97,7 @@ void request_a_resource(int rsc_msg_box_id, int pid) {
     create_msg_that_contains_rsc(rsc_msg_box.mtext);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
     // Blocking receive - wait until granted a resource
-    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
+    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
     // Granted a resource
     return;
 }
@@ -173,15 +174,12 @@ bool has_resource(int pid, struct resource_table* rsc_tbl) {
 
 unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl) {
     // Returns an array of all resource classes that are currently allocated
-    unsigned int num_resources, num_resource_cls = 0;
+    unsigned int num_resources, num_resource_classes = 0;
     unsigned int i, j;
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
-        if (num_resources > 0) {
-            num_resource_cls++;
-        }
-    }
-    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * num_resource_cls);
+
+    num_resource_classes = get_number_of_allocated_rsc_classes(pid, rsc_tbl);
+
+    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * num_resource_classes);
     j = 0;
     for (i = 0; i < NUM_RSC_CLS; i++) {
         num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
@@ -190,4 +188,16 @@ unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl) {
         }
     }
     return allocated_resources;
+}
+
+unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl) {
+    unsigned int num_resources, num_resource_classes = 0;
+    unsigned int i;
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
+        if (num_resources > 0) {
+            num_resource_classes++;
+        }
+    }
+    return num_resource_classes;
 }

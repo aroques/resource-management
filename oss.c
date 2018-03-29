@@ -34,6 +34,7 @@ struct resource_descriptor get_rsc_desc();
 unsigned int get_num_resources();
 void init_allocated(unsigned int* allocated);
 unsigned int get_nanoseconds();
+void print_allocated_rsc_tbl(struct resource_table* rsc_tbl);
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -130,6 +131,8 @@ int main (int argc, char* argv[]) {
     // Print information before exiting
     sprintf(buffer, "OSS: Exiting because %d seconds have been passed\n", TOTAL_RUNTIME);
     print_and_write(buffer);
+
+    print_allocated_rsc_tbl(rsc_tbl);
 
     cleanup_and_exit();
 
@@ -287,4 +290,25 @@ void init_allocated(unsigned int* allocated) {
     for (i = 0; i < MAX_PROC_CNT; i++) {
         allocated[i] = 0;
     }
+}
+
+void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
+    int i, j;
+    printf("\n");
+    printf("%52s", "Allocated Resources\n");
+    printf("     ");
+    // print column titles
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        printf("R%-3d", i+1);
+    }
+    printf("\n");
+    for (i = 0; i < MAX_PROC_CNT; i++) {
+        printf("P%-4d", i+1);
+        // print all resources allocated for process i
+        for (j = 0; j < NUM_RSC_CLS; j++) {
+            printf("%-4d", rsc_tbl->rsc_descs[i].allocated[j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 }

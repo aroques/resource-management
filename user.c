@@ -21,6 +21,8 @@ void add_signal_handlers();
 void handle_sigterm(int sig);
 struct clock get_time_to_request_release_rsc(struct clock sysclock);
 unsigned int get_nanosecs_to_request_release();
+void create_msg_that_contains_rsc(char* mtext);
+unsigned int get_random_resource();
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
@@ -45,20 +47,30 @@ int main (int argc, char *argv[]) {
     struct msgbuf rsc_msg_box;
 
     struct clock time_to_request_release = get_time_to_request_release_rsc(*sysclock);
+    unsigned int resource_to_request;
 
-   // while(1) {
-        // Blocking receive - wait until scheduled
-        //receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
-        // Received message from OSS telling me to run
-        
-    //    if (will_terminate()) {
+   while(1) {
+        if (compare_clocks(*sysclock, time_to_request_release) >= 0) {
 
-    //        break;
-    //    }
-        
-        // Add MAX_PROC_CNT to message type to let OSS know we are done
-        //send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
-    //}
+            // IF amount of granted resources = 0 
+            // THEN request a resource
+
+            // ELSE
+            // Determine if we are going to request or release a resource
+            
+
+            // Request a resource
+            create_msg_that_contains_rsc(rsc_msg_box.mtext);
+            send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+            // Blocking receive - wait until granted a resource
+            receive_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
+            // Granted a resource
+            if (will_terminate()) {
+                break;
+            }
+        }
+        //Received message from OSS telling me to run
+    }
 
     // Add MAX_PROC_CNT to message type to let OSS know we are done
     //send_msg(rsc_msg_box_id, &rsc_msg_box, (pid + MAX_PROC_CNT)); 
@@ -68,6 +80,15 @@ int main (int argc, char *argv[]) {
 
 bool will_terminate() {
     return event_occured(CHANCE_TERMINATE);
+}
+
+void create_msg_that_contains_rsc(char* mtext) {
+    unsigned int resource_to_request = get_random_resource();
+    sprintf(mtext, "%d", resource_to_request);
+}
+
+unsigned int get_random_resource() {
+    return rand() % NUM_RSC_CLS;
 }
 
 unsigned int get_random_pct() {

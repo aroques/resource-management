@@ -23,11 +23,12 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock);
 unsigned int get_nanosecs_to_request_release();
 void create_msg_that_contains_rsc(char* mtext);
 unsigned int get_random_resource();
-bool has_resource(struct resource_table* rsc_tbl);
+bool has_resource(int pid, struct resource_table* rsc_tbl);
 bool will_release_resource();
-unsigned int get_resouce_to_release(int pid, struct resource_table* rsc_tbl);
+unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl);
 void request_a_resource(int rsc_msg_box_id, int pid);
-void release_a_resource(int rsc_msg_box_id, int pid);
+void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
+unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
@@ -51,14 +52,13 @@ int main (int argc, char *argv[]) {
     struct resource_table* rsc_tbl = attach_to_shared_memory(rsc_tbl_id, 0);
 
     struct clock time_to_request_release = get_time_to_request_release_rsc(*sysclock);
-    unsigned int resource_to_request, resource_to_release;
 
     while(1) {
         if (compare_clocks(*sysclock, time_to_request_release) < 0) {
             continue;
         }
         // Time to request/release a resource 
-        if (!has_resource) {
+        if (!has_resource(pid, rsc_tbl)) {
             request_a_resource(rsc_msg_box_id, pid);
             if (will_terminate()) {
                 break;
@@ -67,7 +67,7 @@ int main (int argc, char *argv[]) {
         else {
             // Determine if we are going to request or release a resource
             if (will_release_resource()) {
-                release_a_resource(rsc_msg_box_id, pid);
+                release_a_resource(rsc_msg_box_id, pid, rsc_tbl);
             }
             else {
                 request_a_resource(rsc_msg_box_id, pid);
@@ -83,9 +83,9 @@ int main (int argc, char *argv[]) {
     return 0;  
 }
 
-void release_a_resource(int rsc_msg_box_id, int pid) {
+void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl) {
     struct msgbuf rsc_msg_box;
-    unsigned int resource_to_release = get_resouce_to_release(pid, rsc_tbl);
+    unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
     sprintf(rsc_msg_box.mtext, "%d", resource_to_release);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
     return;
@@ -101,11 +101,12 @@ void request_a_resource(int rsc_msg_box_id, int pid) {
     return;
 }
 
-unsigned int get_resouce_to_release(int pid, struct resource_table* rsc_tbl) {
-    int* allocated_resources = get_allocated_resources(pid, rsc_tbl);
+unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl) {
+    unsigned int* allocated_resources = get_allocated_resources(pid, rsc_tbl);
     size_t size = sizeof(allocated_resources) / sizeof(allocated_resources[0]);
     unsigned int random_idx = rand() % size;
     unsigned int resource_to_release = allocated_resources[random_idx];
+    free(allocated_resources);
     return resource_to_release;
 }
 
@@ -170,17 +171,18 @@ bool has_resource(int pid, struct resource_table* rsc_tbl) {
     return 0;
 }
 
-int* get_allocated_resources(int pid, struct resource_table* rsc_tbl) {
+unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl) {
     // Returns an array of all resource classes that are currently allocated
-    unsigned int num_resource_cls = 0;
+    unsigned int num_resources, num_resource_cls = 0;
+    unsigned int i, j;
     for (i = 0; i < NUM_RSC_CLS; i++) {
         num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
         if (num_resources > 0) {
             num_resource_cls++;
         }
     }
-    unsigned int allocated_resources[num_resource_cls];
-    unsigned int j = 0;
+    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * num_resource_cls);
+    j = 0;
     for (i = 0; i < NUM_RSC_CLS; i++) {
         num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
         if (num_resources > 0) {

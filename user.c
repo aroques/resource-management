@@ -33,6 +33,7 @@ unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table*
 void send_termination_notification(int rsc_msg_box_id, int pid);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
+#define TEN_MILLION 10000000 // 10ms in nanoseconds
 
 const unsigned int CHANCE_TERMINATE = 10;
 const unsigned int CHANCE_RELEASE = 50;
@@ -167,8 +168,8 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock) {
 }
 
 unsigned int get_nanosecs_to_request_release() {
-    unsigned int lower_bound = 10000000;
-    return (rand() % (ONE_HUNDRED_MILLION - lower_bound)) + lower_bound;
+    unsigned int lower_bound = 1000000;
+    return (rand() % (TEN_MILLION - lower_bound)) + lower_bound;
 }
 
 bool has_resource(int pid, struct resource_table* rsc_tbl) {

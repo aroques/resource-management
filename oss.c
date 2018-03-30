@@ -329,7 +329,7 @@ unsigned int get_num_resources() {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 100000) + 10001; // 1 - 100 inclusive
+    return (rand() % 1000000) + 100001; // 100,000 - 1,000,000 inclusive
 }
 
 void init_allocated(unsigned int* allocated) {
@@ -350,7 +350,7 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
     }
     printf("\n");
     for (i = 1; i <= MAX_PROC_CNT; i++) {
-        printf("P%-4d", i+1);
+        printf("P%-4d", i);
         // print all resources allocated for process i
         for (j = 0; j < NUM_RSC_CLS; j++) {
             printf("%-4d", rsc_tbl->rsc_descs[j].allocated[i]);

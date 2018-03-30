@@ -11,6 +11,7 @@ struct msgbuf {
 int get_message_queue();
 void remove_message_queue(int msgqid);
 void receive_msg(int msgqid, struct msgbuf* mbuf, int mtype);
+void receive_msg_no_wait(int msgqid, struct msgbuf* mbuf, int mtype);
 void send_msg(int msgqid, struct msgbuf* mbuf, int mtype);
 
 #endif

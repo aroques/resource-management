@@ -26,7 +26,7 @@ void add_signal_handlers();
 void handle_sigint(int sig);
 void handle_sigalrm(int sig);
 void cleanup_and_exit();
-void fork_child(char** execv_arr, int child_idx, int pid);
+void fork_child(char** execv_arr, unsigned int pid);
 void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
 void allocate_rsc_tbl(struct resource_table*);
@@ -35,6 +35,7 @@ unsigned int get_num_resources();
 void init_allocated(unsigned int* allocated);
 unsigned int get_nanoseconds();
 void print_allocated_rsc_tbl(struct resource_table* rsc_tbl);
+unsigned int get_available_pid();
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -83,7 +84,7 @@ int main (int argc, char* argv[]) {
     allocate_rsc_tbl(rsc_tbl);
     // Shared resource message box for user processes to request/release resources 
     rsc_msg_box_id = get_message_queue();
-    //struct msgbuf rsc_msg_box = { .mtype = 1 };
+    struct msgbuf rsc_msg_box;
 
     // Holds all childpids
     childpids = malloc(sizeof(pid_t) * MAX_PROC_CNT);
@@ -121,6 +122,11 @@ int main (int argc, char* argv[]) {
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
 
+
+        for (i = 1; i <= MAX_PROC_CNT; i++) {
+            receive_msg_no_wait(rsc_msg_box_id, &rsc_msg_box, i);
+
+        }
         // Check for any messages
         // IF found message
         // PARSE message
@@ -327,12 +333,12 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
 }
 
 unsigned int get_available_pid() {
-    unsigned int pid;
+    unsigned int pid, i;
     for (i = 0; i < MAX_PROC_CNT; i++) {
         if (childpids[i] > 0) {
             continue;
         }
-        pid = i;
+        pid = i + 1;
         break;
     }
     return pid;

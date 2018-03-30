@@ -30,6 +30,7 @@ void request_a_resource(int rsc_msg_box_id, int pid);
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
 unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl);
 unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
+void send_termination_notification(int rsc_msg_box_id, int pid);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 
@@ -62,6 +63,7 @@ int main (int argc, char *argv[]) {
         if (!has_resource(pid, rsc_tbl)) {
             request_a_resource(rsc_msg_box_id, pid);
             if (will_terminate()) {
+                send_termination_notification(rsc_msg_box_id, pid);
                 break;
             }
         }
@@ -73,6 +75,7 @@ int main (int argc, char *argv[]) {
             else {
                 request_a_resource(rsc_msg_box_id, pid);
                 if (will_terminate()) {
+                    send_termination_notification(rsc_msg_box_id, pid);
                     break;
                 }
             }
@@ -84,20 +87,26 @@ int main (int argc, char *argv[]) {
     return 0;  
 }
 
+void send_termination_notification(int rsc_msg_box_id, int pid) {
+    struct msgbuf rsc_msg_box;
+    sprintf(rsc_msg_box.mtext, "TERM");
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid); 
+}
+
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl) {
     struct msgbuf rsc_msg_box;
     unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
-    sprintf(rsc_msg_box.mtext, "%d", resource_to_release);
-    send_msg(rsc_msg_box_id, &rsc_msg_box, pid + MAX_PROC_CNT); // Mtype = pid + MAX_PROC_COUNT
+    sprintf(rsc_msg_box.mtext, "RLS%d", resource_to_release);
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     return;
 }
 
 void request_a_resource(int rsc_msg_box_id, int pid) {
     struct msgbuf rsc_msg_box;
     create_msg_that_contains_rsc(rsc_msg_box.mtext);
-    send_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+    send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     // Blocking receive - wait until granted a resource
-    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid); // Mtype = pid
+    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     // Granted a resource
     return;
 }
@@ -120,8 +129,10 @@ bool will_terminate() {
 }
 
 void create_msg_that_contains_rsc(char* mtext) {
+    // NEED TO ADD LOGIC SO THAT WE ONLY REQUEST A RESOURCE IF IT DOES NOT
+    // VIOLATE OUR MAX CLAIMS
     unsigned int resource_to_request = get_random_resource();
-    sprintf(mtext, "%d", resource_to_request);
+    sprintf(mtext, "REQ%d", resource_to_request);
 }
 
 unsigned int get_random_resource() {

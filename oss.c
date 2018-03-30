@@ -109,15 +109,29 @@ int main (int argc, char* argv[]) {
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
+            
+            // LOOP THROUGH CHILDPIDS TILL FIND ONE EQUAL TO 0
+            // THAT MEANS THAT PID IS FREE
+
             fork_child(execv_arr, proc_cnt, proc_cnt);
 
             sprintf(buffer, "OSS: Generating process with PID %d at time %ld:%'ld\n",
                 childpids[proc_cnt], sysclock->seconds, sysclock->nanoseconds);
             print_and_write(buffer);
-
+    
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
-        
+
+        // Check for any messages
+        // IF found message
+        // PARSE message
+        //      REQUEST RSC
+        //          RUN BANKERS ALGORITHM BEFORE GRANTING RSC
+        //      RELEASE RSC
+        //          UPDATE RSC TABLE
+        //      TERMINATING
+        //          UPDATE OUR CHILDPID LIST
+
         //sprintf(buffer, "\n");
         //print_and_write(buffer);
 

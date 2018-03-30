@@ -62,10 +62,10 @@ int main (int argc, char *argv[]) {
         // Time to request/release a resource 
         if (!has_resource(pid, rsc_tbl)) {
             request_a_resource(rsc_msg_box_id, pid);
-            if (will_terminate()) {
-                send_termination_notification(rsc_msg_box_id, pid);
-                break;
-            }
+            // if (will_terminate()) {
+            //     send_termination_notification(rsc_msg_box_id, pid);
+            //     break;
+            // }
         }
         else {
             // Determine if we are going to request or release a resource
@@ -74,16 +74,16 @@ int main (int argc, char *argv[]) {
             }
             else {
                 request_a_resource(rsc_msg_box_id, pid);
-                if (will_terminate()) {
-                    send_termination_notification(rsc_msg_box_id, pid);
-                    break;
-                }
+                // if (will_terminate()) {
+                //     send_termination_notification(rsc_msg_box_id, pid);
+                //     break;
+                // }
             }
         }
         // Get new time to request/release a resouce
         time_to_request_release = get_time_to_request_release_rsc(*sysclock);
     } 
-    printf("user: hello world!\n");
+
     return 0;  
 }
 

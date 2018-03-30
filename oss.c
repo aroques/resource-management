@@ -85,10 +85,11 @@ int main (int argc, char* argv[]) {
     // Shared resource message box for user processes to request/release resources 
     rsc_msg_box_id = get_message_queue();
     struct msgbuf rsc_msg_box;
+    char notification_type[10];
 
     // Holds all childpids
-    childpids = malloc(sizeof(pid_t) * MAX_PROC_CNT);
-    for (i = 0; i < MAX_PROC_CNT; i++) {
+    childpids = malloc(sizeof(pid_t) * (MAX_PROC_CNT + 1));
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
         childpids[i] = 0;
     }
 
@@ -114,31 +115,58 @@ int main (int argc, char* argv[]) {
             pid = get_available_pid();
 
             fork_child(execv_arr, pid);
+            
+            proc_cnt++;
 
             sprintf(buffer, "OSS: Generating process with PID %d at time %ld:%'ld\n",
-                childpids[proc_cnt], sysclock->seconds, sysclock->nanoseconds);
+                pid, sysclock->seconds, sysclock->nanoseconds);
             print_and_write(buffer);
     
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
 
-
+        // Check for any messages
         for (i = 1; i <= MAX_PROC_CNT; i++) {
             receive_msg_no_wait(rsc_msg_box_id, &rsc_msg_box, i);
+            if (strlen(rsc_msg_box.mtext) < 1) {
+                continue;
+            }
 
+            strncpy(notification_type, rsc_msg_box.mtext, 3);
+            char rsc[3];
+            unsigned int resource;
+
+            if (strcmp(notification_type, "REQ") == 0) {
+                // REQUEST
+                rsc[0] = rsc_msg_box.mtext[3];
+                rsc[1] = rsc_msg_box.mtext[4];
+                resource = atoi(rsc);
+                sprintf(buffer, "OSS: Process with PID %d requesting resource %d at time %ld:%'ld\n",
+                    i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                print_and_write(buffer);
+
+                // Now run Bankers Algorithm to detect a Deadlock
+                // Grant or do not grant
+
+            }
+            else if (strcmp(notification_type, "RLS") == 0) {
+                // RELEASE
+                rsc[0] = rsc_msg_box.mtext[3];
+                rsc[1] = rsc_msg_box.mtext[4];
+                resource = atoi(rsc);
+                sprintf(buffer, "OSS: Process with PID %d released resource %d at time %ld:%'ld\n",
+                    i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                print_and_write(buffer);
+            }
+            else {
+                // TERMINATING
+                childpids[i] = 0;
+                proc_cnt--;
+                sprintf(buffer, "OSS: Process with PID %d terminated at time %ld:%'ld\n",
+                    i, sysclock->seconds, sysclock->nanoseconds);
+                print_and_write(buffer);
+            }
         }
-        // Check for any messages
-        // IF found message
-        // PARSE message
-        //      REQUEST RSC
-        //          RUN BANKERS ALGORITHM BEFORE GRANTING RSC
-        //      RELEASE RSC
-        //          UPDATE RSC TABLE
-        //      TERMINATING
-        //          UPDATE OUR CHILDPID LIST
-
-        //sprintf(buffer, "\n");
-        //print_and_write(buffer);
 
         increment_clock(sysclock, get_nanoseconds());
 
@@ -207,7 +235,7 @@ void terminate_children() {
     printf("OSS: Sending SIGTERM to all children\n");
     fprintf(fp, "OSS: Sending SIGTERM to all children\n");
     int i;
-    for (i = 0; i < MAX_PROC_CNT; i++) {
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
         if (childpids[i] == 0) {
             continue;
         }
@@ -301,12 +329,12 @@ unsigned int get_num_resources() {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 100) + 1; // 1 - 100 inclusive
+    return (rand() % 100000) + 10001; // 1 - 100 inclusive
 }
 
 void init_allocated(unsigned int* allocated) {
     int i;
-    for (i = 0; i < MAX_PROC_CNT; i++) {
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
         allocated[i] = 0;
     }
 }
@@ -314,14 +342,14 @@ void init_allocated(unsigned int* allocated) {
 void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
     int i, j;
     printf("\n");
-    printf("%52s", "Allocated Resources\n");
+    printf("%61s", "Current (Allocated) System Resources\n");
     printf("     ");
     // print column titles
     for (i = 0; i < NUM_RSC_CLS; i++) {
         printf("R%-3d", i+1);
     }
     printf("\n");
-    for (i = 0; i < MAX_PROC_CNT; i++) {
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
         printf("P%-4d", i+1);
         // print all resources allocated for process i
         for (j = 0; j < NUM_RSC_CLS; j++) {
@@ -334,11 +362,11 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
 
 unsigned int get_available_pid() {
     unsigned int pid, i;
-    for (i = 0; i < MAX_PROC_CNT; i++) {
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
         if (childpids[i] > 0) {
             continue;
         }
-        pid = i + 1;
+        pid = i;
         break;
     }
     return pid;

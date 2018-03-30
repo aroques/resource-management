@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "message_queue.h"
 
@@ -28,8 +29,12 @@ void receive_msg(int msgqid, struct msgbuf* mbuf, int mtype) {
 }
 
 void receive_msg_no_wait(int msgqid, struct msgbuf* mbuf, int mtype) {
-    strcpy(mbuf->mtext, "");
+    memset(mbuf->mtext, 0, sizeof(mbuf->mtext));
     if (msgrcv(msgqid, mbuf, sizeof(mbuf->mtext), mtype, IPC_NOWAIT) == -1) {
+        if (errno == ENOMSG) {
+            // No message of type mtype
+            return;
+        }
         perror("msgrcv");
         exit(1);
     }

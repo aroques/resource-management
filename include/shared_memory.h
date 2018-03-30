@@ -9,7 +9,7 @@
     
 struct resource_descriptor {
     unsigned int total;
-    unsigned int allocated[MAX_PROC_CNT];
+    unsigned int allocated[MAX_PROC_CNT+1];
 };
 
 struct resource_table {

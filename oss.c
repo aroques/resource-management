@@ -55,7 +55,7 @@ int main (int argc, char* argv[]) {
     setlocale(LC_NUMERIC, "");                  // For comma separated integers in printf
     srand(time(NULL) ^ getpid());
 
-    int i;
+    unsigned int i, pid;
     char buffer[255];                           // Used to hold output that will be printed and written to log file
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
@@ -109,11 +109,10 @@ int main (int argc, char* argv[]) {
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
-            
-            // LOOP THROUGH CHILDPIDS TILL FIND ONE EQUAL TO 0
-            // THAT MEANS THAT PID IS FREE
 
-            fork_child(execv_arr, proc_cnt, proc_cnt);
+            pid = get_available_pid();
+
+            fork_child(execv_arr, pid);
 
             sprintf(buffer, "OSS: Generating process with PID %d at time %ld:%'ld\n",
                 childpids[proc_cnt], sysclock->seconds, sysclock->nanoseconds);
@@ -153,8 +152,8 @@ int main (int argc, char* argv[]) {
     return 0;
 }
 
-void fork_child(char** execv_arr, int child_idx, int pid) {
-    if ((childpids[child_idx] = fork()) == 0) {
+void fork_child(char** execv_arr, unsigned int pid) {
+    if ((childpids[pid] = fork()) == 0) {
         // Child so...
         char clock_id[10];
         char rtbl_id[10];
@@ -177,7 +176,7 @@ void fork_child(char** execv_arr, int child_idx, int pid) {
         exit(1);
     }
 
-    if (childpids[child_idx] == -1) {
+    if (childpids[pid] == -1) {
         perror("Child failed to fork!\n");
         exit(1);
     }
@@ -325,4 +324,16 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
         printf("\n");
     }
     printf("\n");
+}
+
+unsigned int get_available_pid() {
+    unsigned int pid;
+    for (i = 0; i < MAX_PROC_CNT; i++) {
+        if (childpids[i] > 0) {
+            continue;
+        }
+        pid = i;
+        break;
+    }
+    return pid;
 }

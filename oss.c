@@ -162,6 +162,7 @@ int main (int argc, char* argv[]) {
                 // TERMINATING
                 childpids[i] = 0;
                 proc_cnt--;
+                // That process is releasing all its resources so update accordingly
                 sprintf(buffer, "OSS: Process with PID %d terminated at time %ld:%'ld\n",
                     i, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
@@ -370,4 +371,14 @@ unsigned int get_available_pid() {
         break;
     }
     return pid;
+}
+
+bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_resource) {
+    // Get total resources in system (vector of size 20)
+    // Get total allocated resources in system (vector of size 20)
+    // Subtract the two to get the total available resources (vector of size 20)
+
+    // work matrix = available matrix
+    // https://www.youtube.com/watch?v=w0LwGqffUkg
+    return 0;
 }

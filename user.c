@@ -37,7 +37,6 @@ void send_termination_notification(int rsc_msg_box_id, int pid);
 
 const unsigned int CHANCE_TERMINATE = 10;
 const unsigned int CHANCE_RELEASE = 50;
-const unsigned int MAX_CLAIMS = 3; 
 
 int main (int argc, char *argv[]) {
     add_signal_handlers();

@@ -14,6 +14,7 @@ struct resource_descriptor {
 
 struct resource_table {
     struct resource_descriptor rsc_descs[NUM_RSC_CLS];
+    unsigned int max_claims[MAX_PROC_CNT+1];
 };
 
 int get_shared_memory();

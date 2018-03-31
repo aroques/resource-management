@@ -139,12 +139,28 @@ int main (int argc, char* argv[]) {
                 rsc[0] = rsc_msg_box.mtext[3];
                 rsc[1] = rsc_msg_box.mtext[4];
                 resource = atoi(rsc);
-                sprintf(buffer, "OSS: Process with PID %d requesting resource %d at time %ld:%'ld\n",
+                sprintf(buffer, "OSS: Process %d requesting resource %d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
 
-                // Now run Bankers Algorithm to detect a Deadlock
-                // Grant or do not grant
+                // Run Bankers Algorithm to detect if we can grant this resource or not
+                bool rsc_granted = bankers_algorithm(rsc_tbl, i, rsc);
+                if (rsc_granted) {
+                    sprintf(buffer, "OSS: Granting Process %d resource %d at time %ld:%'ld\n",
+                        i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    print_and_write(buffer);
+                    rsc_tbl->rsc_descs[rsc].allocated[i]++;
+                    // send message back to the process to let it know 
+                    // that its request has been granted
+                }
+                else {
+                    // TBD: Put in blocked queue
+                    // TBD: blocked queue will need struct with resource and pid
+                    sprintf(buffer, "OSS: Blocking Process %d for requesting resource %d at time %ld:%'ld\n",
+                        i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    print_and_write(buffer);
+                    // Let the process stay waiting on a message from OSS
+                }
 
             }
             else if (strcmp(notification_type, "RLS") == 0) {
@@ -152,16 +168,18 @@ int main (int argc, char* argv[]) {
                 rsc[0] = rsc_msg_box.mtext[3];
                 rsc[1] = rsc_msg_box.mtext[4];
                 resource = atoi(rsc);
-                sprintf(buffer, "OSS: Process with PID %d released resource %d at time %ld:%'ld\n",
+                sprintf(buffer, "OSS: Process %d released resource %d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
+                // TBD: Check to see if we can unblock any processes
             }
             else {
                 // TERMINATING
                 childpids[i] = 0;
                 proc_cnt--;
-                // That process is releasing all its resources so update accordingly
-                sprintf(buffer, "OSS: Process with PID %d terminated at time %ld:%'ld\n",
+                // TBD: That process is releasing all its resources so update accordingly
+                // TBD: Check to see if we can unblock any processes
+                sprintf(buffer, "OSS: Process %d terminated at time %ld:%'ld\n",
                     i, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
             }

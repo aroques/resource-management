@@ -7,14 +7,23 @@
 #define NUM_RSC_CLS 20
 #define MAX_PROC_CNT 18
 
-bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_resource) {
+bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int requested_resource) {
     unsigned int i, j;
 
-    // Suppose P1 requests resource 4.
-    // Then we add it to P1's allocation and subtract it from avaiable
+    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
+    if (allocated_resources[requested_resource] == rsc_tbl->rsc_descs[requested_resource].total) {
+        // All resources in this resource class have already been allocated so
+        // we cannot grant the request
+        return 0;
+    }
+    else {
+        // We grant grant the request and then check if there is a safe state
+        rsc_tbl->rsc_descs[requested_resource].allocated[pid]++;
+    }
+    
     
     unsigned int* total_resources = get_total_resources(rsc_tbl);
-    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
+    allocated_resources = get_allocated_resources(rsc_tbl);
     unsigned int* available_resources = get_available_resources(total_resources, allocated_resources); 
 
     unsigned int** needs = get_needs_matrix(rsc_tbl);
@@ -59,7 +68,10 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_re
     } while (num_that_could_finish > 0);
 
     bool safe_sequence_exists = check_for_safe_sequence(can_finish);
-
+    
+    // Restore resource table state
+    rsc_tbl->rsc_descs[requested_resource].allocated[pid]--;
+    
     free(total_resources);
     free(allocated_resources);
     free(available_resources);

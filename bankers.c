@@ -17,51 +17,57 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_re
     unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
     unsigned int* available_resources = get_available_resources(total_resources, allocated_resources); 
 
-    // Load max
-    unsigned int max[NUM_RSC_CLS];
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        max[i] += rsc_tbl->max_claims[i];
-    }
-
     unsigned int** needs = get_needs_matrix(rsc_tbl);
 
-    // Copy avaiable into work
-    unsigned work[NUM_RSC_CLS];
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        work[i] = available_resources[i];
-    }
+    unsigned int* work = get_work_arr(available_resources);
 
-    // Initialize can finish to true
-    bool can_finish[MAX_PROC_CNT+1];
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        can_finish[i] = 1;
-    }
+    bool* can_finish = get_can_finish();
 
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        // For process i
-        for(j = 0; j < NUM_RSC_CLS; j++) {
-            // Check if needs is greater than available
-            if (needs[i][j] > available_resources[j]) {
-                // If it is then we cannot finish executing
-                can_finish[i] = 0;
-                break;
+    /*
+     *  Determine if there is a safe sequence
+     */
+    unsigned int num_that_could_finish = 0;
+
+    do {
+        num_that_could_finish = 0;
+
+        // Check if each process can finish executing
+        // If it can then add its allocated resources to the work vector
+        for (i = 1; i <= MAX_PROC_CNT; i++) {
+            if (can_finish[i]) {
+                // We've already determined that this process can finish
+                continue;
+            }
+            // For process i
+            for(j = 0; j < NUM_RSC_CLS; j++) {
+                // Check if needs is greater than available
+                if (needs[i][j] > available_resources[j]) {
+                    // If it is then we cannot finish executing
+                    can_finish[i] = 0;
+                    break;
+                }
+            }
+            if (can_finish[i]) {
+                // Can finish so add process i's allocated resources to the work vector
+                for (j = 0; j < NUM_RSC_CLS; j++) {
+                    work[j] += rsc_tbl->rsc_descs[j].allocated[i];
+                }
+                num_that_could_finish++;
             }
         }
-        if (can_finish[i]) {
-            // Can finish so add process i's allocated resources to the work vector
-            for (j = 0; j < NUM_RSC_CLS; j++) {
-                work[j] += rsc_tbl->rsc_descs[j].allocated[i];
-            }
-        }
-    }
+
+    } while (num_that_could_finish > 0);
+
+    bool safe_sequence_exists = check_for_safe_sequence(can_finish);
 
     free(total_resources);
     free(allocated_resources);
     free(available_resources);
+    free(work);
+    free(can_finish);
     destroy_array(needs);
 
-    // https://www.youtube.com/watch?v=w0LwGqffUkg
-    return 0;
+    return safe_sequence_exists;
 }
 
 unsigned int* get_available_resources(unsigned int* total_resources, unsigned int* allocated_resources) {
@@ -81,6 +87,24 @@ unsigned int* get_total_resources(struct resource_table* rsc_tbl) {
         total_resources[i] = rsc_tbl->rsc_descs[i].total;
     }
     return total_resources;
+}
+
+unsigned int* get_work_arr(unsigned int* available_resources) {
+    unsigned int i;
+    unsigned int* work = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        work[i] = available_resources[i];
+    }
+    return work;
+}
+
+bool* get_can_finish() {
+    unsigned int i;
+    bool* can_finish = malloc(sizeof(bool) * MAX_PROC_CNT+1);
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
+        can_finish[i] = 1;
+    }
+    return can_finish;
 }
 
 unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
@@ -106,4 +130,14 @@ unsigned int** get_needs_matrix(struct resource_table* rsc_tbl) {
         }
     }
     return needs;
+}
+
+bool check_for_safe_sequence(bool* can_finish) {
+    unsigned int i;
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
+        if (!can_finish[i]) {
+            return 0;
+        }
+    }
+    return 1;
 }

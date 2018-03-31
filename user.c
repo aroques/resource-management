@@ -22,12 +22,12 @@ void add_signal_handlers();
 void handle_sigterm(int sig);
 struct clock get_time_to_request_release_rsc(struct clock sysclock);
 unsigned int get_nanosecs_to_request_release();
-void create_msg_that_contains_rsc(char* mtext);
+void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* rsc_tbl);
 unsigned int get_random_resource();
 bool has_resource(int pid, struct resource_table* rsc_tbl);
 bool will_release_resource();
 unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl);
-void request_a_resource(int rsc_msg_box_id, int pid);
+void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
 unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl);
 unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
@@ -62,7 +62,7 @@ int main (int argc, char *argv[]) {
         }
         // Time to request/release a resource 
         if (!has_resource(pid, rsc_tbl)) {
-            request_a_resource(rsc_msg_box_id, pid);
+            request_a_resource(rsc_msg_box_id, pid, rsc_tbl);
             // if (will_terminate()) {
             //     send_termination_notification(rsc_msg_box_id, pid);
             //     break;
@@ -74,7 +74,7 @@ int main (int argc, char *argv[]) {
                 release_a_resource(rsc_msg_box_id, pid, rsc_tbl);
             }
             else {
-                request_a_resource(rsc_msg_box_id, pid);
+                request_a_resource(rsc_msg_box_id, pid, rsc_tbl);
                 // if (will_terminate()) {
                 //     send_termination_notification(rsc_msg_box_id, pid);
                 //     break;
@@ -102,9 +102,9 @@ void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     return;
 }
 
-void request_a_resource(int rsc_msg_box_id, int pid) {
+void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl) {
     struct msgbuf rsc_msg_box;
-    create_msg_that_contains_rsc(rsc_msg_box.mtext);
+    create_msg_that_contains_rsc(rsc_msg_box.mtext, pid, rsc_tbl);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     // Blocking receive - wait until granted a resource
     receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
@@ -129,10 +129,14 @@ bool will_terminate() {
     return event_occured(CHANCE_TERMINATE);
 }
 
-void create_msg_that_contains_rsc(char* mtext) {
-    // NEED TO ADD LOGIC SO THAT WE ONLY REQUEST A RESOURCE IF IT DOES NOT
-    // VIOLATE OUR MAX CLAIMS
-    unsigned int resource_to_request = get_random_resource();
+void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* rsc_tbl) {
+    unsigned int resource_to_request, num_currently_allocated, max_claims;
+    do {
+        resource_to_request = get_random_resource();
+        num_currently_allocated = rsc_tbl->rsc_descs[resource_to_request].allocated[pid];
+        max_claims = rsc_tbl->max_claims[pid];
+    } while (num_currently_allocated >= max_claims);
+    // We currently do not have more of this resource allocated then our max claims limits
     sprintf(mtext, "REQ%d", resource_to_request);
 }
 

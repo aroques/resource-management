@@ -20,6 +20,7 @@
 #include "message_queue.h"
 #include "queue.h"
 #include "resources.h"
+#include "bankers.h"
 
 void wait_for_all_children();
 void add_signal_handlers();
@@ -144,13 +145,13 @@ int main (int argc, char* argv[]) {
                 print_and_write(buffer);
 
                 // Run Bankers Algorithm to detect if we can grant this resource or not
-                bool rsc_granted = bankers_algorithm(rsc_tbl, i, rsc);
+                bool rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
                 if (rsc_granted) {
                     sprintf(buffer, "OSS: Granting Process %d resource %d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                     print_and_write(buffer);
-                    rsc_tbl->rsc_descs[rsc].allocated[i]++;
-                    // send message back to the process to let it know 
+                    rsc_tbl->rsc_descs[resource].allocated[i]++;
+                    // TBD: send message back to the process to let it know 
                     // that its request has been granted
                 }
                 else {

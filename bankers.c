@@ -17,7 +17,7 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int req
         return 0;
     }
     else {
-        // We grant grant the request and then check if there is a safe state
+        // We grant the request and then check if there is a safe state
         rsc_tbl->rsc_descs[requested_resource].allocated[pid]++;
     }
     

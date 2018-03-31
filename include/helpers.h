@@ -9,5 +9,7 @@ void print_usage();
 void parse_cmd_line_args(int argc, char* argv[]);
 void set_timer(int duration);
 bool event_occured(unsigned int pct_chance);
+unsigned int** create_array(int m, int n);
+void destroy_array(unsigned int** arr);
 
 #endif

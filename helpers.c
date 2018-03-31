@@ -76,3 +76,18 @@ bool event_occured(unsigned int pct_chance) {
         return 0;
     }
 }
+
+unsigned int** create_array(int m, int n) {
+    unsigned int* values = calloc(m*n, sizeof(unsigned int));
+    unsigned int** rows = malloc(n*sizeof(unsigned int*));
+    for (int i=0; i<n; ++i)
+    {
+        rows[i] = values + i*m;
+    }
+    return rows;
+}
+
+void destroy_array(unsigned int** arr) {
+    free(*arr);
+    free(arr);
+}

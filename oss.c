@@ -377,53 +377,6 @@ unsigned int get_available_pid() {
     return pid;
 }
 
-bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_resource) {
-    unsigned int i, j;
-    
-    unsigned int total_resources[NUM_RSC_CLS];
-    unsigned int allocated_resources[NUM_RSC_CLS];
-
-    // Load total and allocated resources
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        total_resources[i] = rsc_tbl->rsc_descs[i].total;
-        for (j = 1; j <= MAX_PROC_CNT; j++) {
-            allocated_resources[i] += rsc_tbl->rsc_descs[i].allocated[j];
-        }
-    }
-    
-    // Subtract the two to get the total available resources
-    unsigned int available_resources[NUM_RSC_CLS];
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        available_resources[i] = total_resources[i] - allocated_resources[i];
-    }
-
-    // Load max
-    unsigned int max[NUM_RSC_CLS];
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        max[i] += rsc_tbl->max_claims[i];
-    }
-
-    // Calculate Needs matrix
-    unsigned int need[MAX_PROC_CNT+1][NUM_RSC_CLS];
-    unsigned int proc_max, proc_alloc;
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        for (j = 0; j < NUM_RSC_CLS; j++) {
-            proc_max = rsc_tbl->max_claims[i];               // Max number of resources for process i
-            proc_alloc = rsc_tbl->rsc_descs[j].allocated[i]; // Number of allocated resources for process i
-            need[i][j] = proc_max - proc_alloc;
-        }
-    }
-
-    unsigned int work[NUM_RSC_CLS];
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        work[i] = available_resources[i];
-    }
-
-
-    // https://www.youtube.com/watch?v=w0LwGqffUkg
-    return 0;
-}
-
 unsigned int get_max_resource_claims() {
     return (rand() % MAX_CLAIMS) + 1;
 }

@@ -19,7 +19,7 @@
 #include "shared_memory.h"
 #include "message_queue.h"
 #include "queue.h"
-
+#include "resources.h"
 
 void wait_for_all_children();
 void add_signal_handlers();
@@ -29,12 +29,7 @@ void cleanup_and_exit();
 void fork_child(char** execv_arr, unsigned int pid);
 void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
-void allocate_rsc_tbl(struct resource_table*);
-struct resource_descriptor get_rsc_desc();
-unsigned int get_num_resources();
-void init_allocated(unsigned int* allocated);
 unsigned int get_nanoseconds();
-void print_allocated_rsc_tbl(struct resource_table* rsc_tbl);
 unsigned int get_available_pid();
 unsigned int get_max_resource_claims();
 
@@ -314,55 +309,8 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
     return sysclock;
 }
 
-void allocate_rsc_tbl(struct resource_table* rsc_tbl) {
-    int i;
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        rsc_tbl->rsc_descs[i] = get_rsc_desc();
-    }
-}
-
-struct resource_descriptor get_rsc_desc() {
-    struct resource_descriptor rsc_desc = {
-        .total = get_num_resources(),
-    };
-    init_allocated(rsc_desc.allocated);
-    return rsc_desc;
-}
-
-unsigned int get_num_resources() {
-    return (rand() % 10) + 1; // 1 - 10 inclusive
-}
-
 unsigned int get_nanoseconds() {
     return (rand() % 1000000) + 100001; // 100,000 - 1,000,000 inclusive
-}
-
-void init_allocated(unsigned int* allocated) {
-    int i;
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        allocated[i] = 0;
-    }
-}
-
-void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
-    int i, j;
-    printf("\n");
-    printf("%61s", "Current (Allocated) System Resources\n");
-    printf("     ");
-    // print column titles
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        printf("R%-3d", i+1);
-    }
-    printf("\n");
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        printf("P%-4d", i);
-        // print all resources allocated for process i
-        for (j = 0; j < NUM_RSC_CLS; j++) {
-            printf("%-4d", rsc_tbl->rsc_descs[j].allocated[i]);
-        }
-        printf("\n");
-    }
-    printf("\n");
 }
 
 unsigned int get_available_pid() {

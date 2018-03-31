@@ -8,9 +8,9 @@ OBJS1 = oss.o
 EXEC2 = user
 OBJS2 = user.o
 
-SHARE = helpers.o message_queue.o shared_memory.o queue.o clock.o bankers.o
+SHARE = helpers.o message_queue.o shared_memory.o queue.o clock.o bankers.o resources.o
 
-DEPS = global_constants.h helpers.h message_queue.h shared_memory.h clock.h queue.h bankers.h
+DEPS = global_constants.h helpers.h message_queue.h shared_memory.h clock.h queue.h bankers.h resources.h
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)

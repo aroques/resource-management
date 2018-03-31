@@ -14,6 +14,7 @@
 #include "message_queue.h"
 #include "shared_memory.h"
 #include "clock.h"
+#include "resources.h"
 
 bool will_terminate();
 unsigned int get_random_pct();

@@ -19,5 +19,6 @@ void allocate_rsc_tbl(struct resource_table* rsc_tbl);
 struct resource_descriptor get_rsc_desc();
 void init_allocated(unsigned int* allocated);
 unsigned int get_num_resources();
+unsigned int get_max_resource_claims();
 
 #endif

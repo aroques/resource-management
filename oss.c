@@ -31,7 +31,6 @@ void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
-unsigned int get_max_resource_claims();
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -323,8 +322,4 @@ unsigned int get_available_pid() {
         break;
     }
     return pid;
-}
-
-unsigned int get_max_resource_claims() {
-    return (rand() % MAX_CLAIMS) + 1;
 }

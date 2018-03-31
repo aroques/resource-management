@@ -49,3 +49,8 @@ void init_allocated(unsigned int* allocated) {
         allocated[i] = 0;
     }
 }
+
+unsigned int get_max_resource_claims() {
+    const unsigned int MAX_CLAIMS = 4; // Upper bound of max number of a resource class a process can claim 
+    return (rand() % MAX_CLAIMS) + 1;
+}

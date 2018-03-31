@@ -1,6 +1,7 @@
 #ifndef BANKERS_H
 #define BANKERS_H
 
+#include "shared_memory.h"
 #include <stdbool.h>
 
 bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_resource);

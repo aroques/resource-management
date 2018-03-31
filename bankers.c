@@ -1,5 +1,11 @@
 #include "bankers.h"
-#include "global_constants.h"
+#include "helpers.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NUM_RSC_CLS 20
+#define MAX_PROC_CNT 18
 
 bool bankers_algorithm(struct resource_table* rsc_tbl, unsigned int requested_resource) {
     unsigned int i, j;
@@ -70,7 +76,7 @@ unsigned int* get_available_resources(unsigned int* total_resources, unsigned in
 
 unsigned int* get_total_resources(struct resource_table* rsc_tbl) {
     unsigned int i;
-    unsigned int total_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS)
+    unsigned int* total_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
     for (i = 0; i < NUM_RSC_CLS; i++) {
         total_resources[i] = rsc_tbl->rsc_descs[i].total;
     }
@@ -79,7 +85,7 @@ unsigned int* get_total_resources(struct resource_table* rsc_tbl) {
 
 unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
     unsigned int i, j;
-    unsigned int allocated_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS)
+    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
     for (i = 0; i < NUM_RSC_CLS; i++) {
         for (j = 1; j <= MAX_PROC_CNT; j++) {
             allocated_resources[i] += rsc_tbl->rsc_descs[i].allocated[j];
@@ -89,6 +95,7 @@ unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
 }
 
 unsigned int** get_needs_matrix(struct resource_table* rsc_tbl) {
+    unsigned int i, j;
     unsigned int** needs = create_array(MAX_PROC_CNT+1, NUM_RSC_CLS);
     unsigned int max_processes, allocated_processes;
     for (i = 1; i <= MAX_PROC_CNT; i++) {

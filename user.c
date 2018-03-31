@@ -28,7 +28,7 @@ bool will_release_resource();
 unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl);
 void request_a_resource(int rsc_msg_box_id, int pid);
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
-unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl);
+unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl);
 unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
 void send_termination_notification(int rsc_msg_box_id, int pid);
 
@@ -112,7 +112,7 @@ void request_a_resource(int rsc_msg_box_id, int pid) {
 }
 
 unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl) {
-    unsigned int* allocated_resources = get_allocated_resources(pid, rsc_tbl);
+    unsigned int* allocated_resources = get_current_alloced_rscs(pid, rsc_tbl);
     size_t size = sizeof(allocated_resources) / sizeof(allocated_resources[0]);
     unsigned int random_idx = rand() % size;
     unsigned int resource_to_release = allocated_resources[random_idx];
@@ -183,7 +183,7 @@ bool has_resource(int pid, struct resource_table* rsc_tbl) {
     return 0;
 }
 
-unsigned int* get_allocated_resources(int pid, struct resource_table* rsc_tbl) {
+unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl) {
     // Returns an array of all resource classes that are currently allocated
     unsigned int num_resources, num_resource_classes = 0;
     unsigned int i, j;

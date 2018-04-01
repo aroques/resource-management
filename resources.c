@@ -1,49 +1,58 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 
 #include "resources.h"
+#include "helpers.h"
 
-void print_available_rsc_tbl(struct resource_table* rsc_tbl) {
+#define BUF_SIZE 2000
+
+void print_available_rsc_tbl(struct resource_table* rsc_tbl, FILE* fp) {
     int i, j, available;
-    printf("\n");
-    printf("%61s", "Current Available System Resources\n");
-    printf("     ");
+    char buffer[BUF_SIZE];
+    sprintf(buffer, "\n");
+    sprintf(buffer + strlen(buffer), "%61s", "Current Available System Resources\n");
+    sprintf(buffer + strlen(buffer),"     ");
     // print column titles
     for (i = 0; i < NUM_RSC_CLS; i++) {
-        printf("R%-3d", i+1);
+        sprintf(buffer + strlen(buffer),"R%-3d", i+1);
     }
-    printf("\n");
+    sprintf(buffer + strlen(buffer),"\n");
     for (i = 1; i <= MAX_PROC_CNT; i++) {
-        printf("P%-4d", i);
+        sprintf(buffer + strlen(buffer),"P%-4d", i);
         // print all resources allocated for process i
         for (j = 0; j < NUM_RSC_CLS; j++) {
             available = rsc_tbl->rsc_descs[j].total - rsc_tbl->rsc_descs[j].allocated[i];
-            printf("%-4d", available);
+            sprintf(buffer + strlen(buffer),"%-4d", available);
         }
-        printf("\n");
+        sprintf(buffer + strlen(buffer),"\n");
     }
-    printf("\n");
+    sprintf(buffer + strlen(buffer),"\n");
+    print_and_write(buffer, fp);
 }
 
-void print_allocated_rsc_tbl(struct resource_table* rsc_tbl) {
+void print_allocated_rsc_tbl(struct resource_table* rsc_tbl, FILE* fp) {
     int i, j;
-    printf("\n");
-    printf("%61s", "Current (Allocated) System Resources\n");
-    printf("     ");
+    char buffer[BUF_SIZE];
+    sprintf(buffer,"\n");
+    sprintf(buffer + strlen(buffer),"%61s", "Current (Allocated) System Resources\n");
+    sprintf(buffer + strlen(buffer),"     ");
     // print column titles
     for (i = 0; i < NUM_RSC_CLS; i++) {
-        printf("R%-3d", i+1);
+        sprintf(buffer + strlen(buffer),"R%-3d", i+1);
     }
-    printf("\n");
+    sprintf(buffer + strlen(buffer),"\n");
     for (i = 1; i <= MAX_PROC_CNT; i++) {
-        printf("P%-4d", i);
+        sprintf(buffer + strlen(buffer),"P%-4d", i);
         // print all resources allocated for process i
         for (j = 0; j < NUM_RSC_CLS; j++) {
-            printf("%-4d", rsc_tbl->rsc_descs[j].allocated[i]);
+            sprintf(buffer + strlen(buffer),"%-4d", rsc_tbl->rsc_descs[j].allocated[i]);
         }
-        printf("\n");
+        sprintf(buffer + strlen(buffer),"\n");
     }
-    printf("\n");
+    sprintf(buffer + strlen(buffer),"\n");
+    print_and_write(buffer, fp);
 }
 
 void allocate_rsc_tbl(struct resource_table* rsc_tbl) {

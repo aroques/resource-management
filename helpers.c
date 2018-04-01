@@ -91,3 +91,8 @@ void destroy_array(unsigned int** arr) {
     free(*arr);
     free(arr);
 }
+
+void print_and_write(char* str, FILE* fp) {
+    fputs(str, stdout);
+    fputs(str, fp);
+}

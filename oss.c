@@ -28,7 +28,6 @@ void handle_sigint(int sig);
 void handle_sigalrm(int sig);
 void cleanup_and_exit();
 void fork_child(char** execv_arr, unsigned int pid);
-void print_and_write(char* str);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
@@ -104,7 +103,7 @@ int main (int argc, char* argv[]) {
     /*
      *  Main loop
      */
-    print_available_rsc_tbl(rsc_tbl);
+    print_available_rsc_tbl(rsc_tbl, fp);
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
@@ -119,7 +118,7 @@ int main (int argc, char* argv[]) {
 
             sprintf(buffer, "OSS: Generating P%d at time %ld:%'ld\n",
                 pid, sysclock->seconds, sysclock->nanoseconds);
-            print_and_write(buffer);
+            print_and_write(buffer, fp);
     
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
@@ -142,14 +141,14 @@ int main (int argc, char* argv[]) {
                 resource = atoi(rsc);
                 sprintf(buffer, "OSS: P%d requesting R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer);
+                print_and_write(buffer, fp);
 
                 // Run Bankers Algorithm to detect if we can grant this resource or not
                 bool rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
                 if (rsc_granted) {
                     sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                    print_and_write(buffer);
+                    print_and_write(buffer, fp);
                     rsc_tbl->rsc_descs[resource].allocated[i]++;
                     // Send message back to user program to let it know that its request was granted
                     send_msg(rsc_msg_box_id, &rsc_msg_box, i);
@@ -159,7 +158,7 @@ int main (int argc, char* argv[]) {
                     // TBD: blocked queue will need struct with resource and pid
                     sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                    print_and_write(buffer);
+                    print_and_write(buffer, fp);
                     // Let the process stay waiting on a message from OSS
                 }
 
@@ -171,7 +170,7 @@ int main (int argc, char* argv[]) {
                 resource = atoi(rsc);
                 sprintf(buffer, "OSS: P%d released R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer);
+                print_and_write(buffer, fp);
                 rsc_tbl->rsc_descs[resource].allocated[i]--;
                 // TBD: Check to see if we can unblock any processes
             }
@@ -184,10 +183,10 @@ int main (int argc, char* argv[]) {
                 // TBD: Check to see if we can unblock any processes
                 sprintf(buffer, "OSS: P%d terminated at time %ld:%'ld\n",
                     i, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer);
+                print_and_write(buffer, fp);
             }
             sprintf(buffer, "\n");
-            print_and_write(buffer);
+            print_and_write(buffer, fp);
         }
 
         increment_clock(sysclock, get_nanoseconds());
@@ -199,10 +198,10 @@ int main (int argc, char* argv[]) {
 
     // Print information before exiting
     sprintf(buffer, "OSS: Exiting because %d seconds have been passed\n", TOTAL_RUNTIME);
-    print_and_write(buffer);
+    print_and_write(buffer, fp);
 
-    print_allocated_rsc_tbl(rsc_tbl);
-    print_available_rsc_tbl(rsc_tbl);
+    print_allocated_rsc_tbl(rsc_tbl, fp);
+    print_available_rsc_tbl(rsc_tbl, fp);
 
     cleanup_and_exit();
 
@@ -319,11 +318,6 @@ void cleanup_and_exit() {
     cleanup_shared_memory(rsc_tbl_id, rsc_tbl);
     fclose(fp);
     exit(0);
-}
-
-void print_and_write(char* str) {
-    fputs(str, stdout);
-    fputs(str, fp);
 }
 
 struct clock get_time_to_fork_new_proc(struct clock sysclock) {

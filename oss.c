@@ -144,7 +144,13 @@ int main (int argc, char* argv[]) {
                 print_and_write(buffer, fp);
 
                 // Run Bankers Algorithm to detect if we can grant this resource or not
-                bool rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
+                bool rsc_granted = 0;
+                bool rsc_is_available = resource_is_available(rsc_tbl, resource);
+                char reason[50] = "resource is unavailable";
+                if (rsc_is_available) {
+                    rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
+                    sprintf(reason, "granting this resource would lead to an unsafe state");
+                }
                 if (rsc_granted) {
                     sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
@@ -156,8 +162,8 @@ int main (int argc, char* argv[]) {
                 else {
                     // TBD: Put in blocked queue
                     // TBD: blocked queue will need struct with resource and pid
-                    sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld\n",
-                        i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld because %s\n",
+                        i, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
                     print_and_write(buffer, fp);
                     // Let the process stay waiting on a message from OSS
                 }

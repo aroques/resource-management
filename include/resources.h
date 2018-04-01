@@ -28,5 +28,9 @@ void print_allocated_rsc_tbl(struct resource_table* rsc_tbl, FILE* fp);
 unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl);
 unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
 bool has_resource(int pid, struct resource_table* rsc_tbl);
+bool resource_is_available(struct resource_table* rsc_tbl, unsigned int requested_resource);
+unsigned int* get_allocated_resources(struct resource_table* rsc_tbl);
+unsigned int* get_available_resources(struct resource_table* rsc_tbl);
+unsigned int* get_total_resources(struct resource_table* rsc_tbl);
 
 #endif

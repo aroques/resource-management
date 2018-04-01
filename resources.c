@@ -2,11 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "resources.h"
 #include "helpers.h"
 
-#define BUF_SIZE 2000
+#define BUF_SIZE 1800
 
 void print_available_rsc_tbl(struct resource_table* rsc_tbl, FILE* fp) {
     int i, j, available;
@@ -133,4 +132,54 @@ bool has_resource(int pid, struct resource_table* rsc_tbl) {
         }
     }
     return 0;
+}
+
+bool resource_is_available(struct resource_table* rsc_tbl, unsigned int requested_resource) {
+    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
+    unsigned int currently_allocated = allocated_resources[requested_resource];
+    unsigned int total = rsc_tbl->rsc_descs[requested_resource].total;
+    free(allocated_resources);
+    printf("current allocated = %d, total = %d\n", currently_allocated, total);
+    if (currently_allocated == total) {
+        // All resources in this resource class have already been allocated so
+        // the resource is not available
+        return 0;
+    }
+    return 1;
+}
+
+unsigned int* get_available_resources(struct resource_table* rsc_tbl) {
+    // Subtract the two to get the total available resources
+    unsigned int i;
+    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
+    unsigned int* total_resources = get_total_resources(rsc_tbl);
+    unsigned int* available_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        available_resources[i] = total_resources[i] - allocated_resources[i];
+    }
+    return available_resources;
+}
+
+unsigned int* get_total_resources(struct resource_table* rsc_tbl) {
+    unsigned int i;
+    unsigned int* total_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        total_resources[i] = rsc_tbl->rsc_descs[i].total;
+    }
+    return total_resources;
+}
+
+unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
+    unsigned int i, j;
+    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        allocated_resources[i] = 0;
+    }
+
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        for (j = 1; j <= MAX_PROC_CNT; j++) {
+            allocated_resources[i] += rsc_tbl->rsc_descs[i].allocated[j];
+        }
+    }
+    return allocated_resources;
 }

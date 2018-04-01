@@ -9,31 +9,13 @@
 
 bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int requested_resource) {
     unsigned int i, j;
-
-    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
-    unsigned int total = rsc_tbl->rsc_descs[requested_resource].total;
-    unsigned int alloced = allocated_resources[requested_resource];
-
-    if (total == alloced) {
-        // All resources in this resource class have already been allocated so
-        // we cannot grant the request
-        printf("OSS: Rejecting becuase allocated == total\n");
-        return 0;
-    }
-    else {
-        // We grant the request and then check if there is a safe state
-        rsc_tbl->rsc_descs[requested_resource].allocated[pid]++;
-    }
     
-    
-    unsigned int* total_resources = get_total_resources(rsc_tbl);
-    allocated_resources = get_allocated_resources(rsc_tbl);
-    unsigned int* available_resources = get_available_resources(total_resources, allocated_resources); 
+    // We grant the request and then check if there is a safe state
+    rsc_tbl->rsc_descs[requested_resource].allocated[pid]++;
 
+    unsigned int* available_resources = get_available_resources(rsc_tbl); 
     unsigned int** needs = get_needs_matrix(rsc_tbl);
-
     unsigned int* work = get_work_arr(available_resources);
-
     bool* can_finish = get_can_finish();
 
     /*
@@ -76,33 +58,12 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int req
     // Restore resource table state
     rsc_tbl->rsc_descs[requested_resource].allocated[pid]--;
     
-    free(total_resources);
-    free(allocated_resources);
     free(available_resources);
     free(work);
     free(can_finish);
     destroy_array(needs);
 
     return safe_sequence_exists;
-}
-
-unsigned int* get_available_resources(unsigned int* total_resources, unsigned int* allocated_resources) {
-    // Subtract the two to get the total available resources
-    unsigned int i;
-    unsigned int* available_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        available_resources[i] = total_resources[i] - allocated_resources[i];
-    }
-    return available_resources;
-}
-
-unsigned int* get_total_resources(struct resource_table* rsc_tbl) {
-    unsigned int i;
-    unsigned int* total_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        total_resources[i] = rsc_tbl->rsc_descs[i].total;
-    }
-    return total_resources;
 }
 
 unsigned int* get_work_arr(unsigned int* available_resources) {
@@ -121,17 +82,6 @@ bool* get_can_finish() {
         can_finish[i] = 1;
     }
     return can_finish;
-}
-
-unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
-    unsigned int i, j;
-    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        for (j = 1; j <= MAX_PROC_CNT; j++) {
-            allocated_resources[i] = rsc_tbl->rsc_descs[i].allocated[j];
-        }
-    }
-    return allocated_resources;
 }
 
 unsigned int** get_needs_matrix(struct resource_table* rsc_tbl) {

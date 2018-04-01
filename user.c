@@ -132,7 +132,7 @@ void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* r
         resource_to_request = get_random_resource();
         num_currently_allocated = rsc_tbl->rsc_descs[resource_to_request].allocated[pid];
         max_claims = rsc_tbl->max_claims[pid];
-    } while (num_currently_allocated >= max_claims);
+    } while (num_currently_allocated == max_claims);
     // We currently do not have more of this resource allocated then our max claims limits
     sprintf(mtext, "REQ%d", resource_to_request);
 }

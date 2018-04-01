@@ -29,7 +29,7 @@ void receive_msg(int msgqid, struct msgbuf* mbuf, int mtype) {
 }
 
 void receive_msg_no_wait(int msgqid, struct msgbuf* mbuf, int mtype) {
-    memset(mbuf->mtext, 0, sizeof(mbuf->mtext));
+    sprintf(mbuf->mtext, "0");
     if (msgrcv(msgqid, mbuf, sizeof(mbuf->mtext), mtype, IPC_NOWAIT) == -1) {
         if (errno == ENOMSG) {
             // No message of type mtype

@@ -24,20 +24,17 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock);
 unsigned int get_nanosecs_to_request_release();
 void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* rsc_tbl);
 unsigned int get_random_resource();
-bool has_resource(int pid, struct resource_table* rsc_tbl);
 bool will_release_resource();
 unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl);
 void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl);
-unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl);
-unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl);
 void send_termination_notification(int rsc_msg_box_id, int pid);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 #define TEN_MILLION 10000000 // 10ms in nanoseconds
 
 const unsigned int CHANCE_TERMINATE = 10;
-const unsigned int CHANCE_RELEASE = 50;
+const unsigned int CHANCE_RELEASE = 1;
 
 int main (int argc, char *argv[]) {
     add_signal_handlers();
@@ -114,7 +111,7 @@ void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
 
 unsigned int get_resource_to_release(int pid, struct resource_table* rsc_tbl) {
     unsigned int* allocated_resources = get_current_alloced_rscs(pid, rsc_tbl);
-    size_t size = sizeof(allocated_resources) / sizeof(allocated_resources[0]);
+    unsigned int size = get_number_of_allocated_rsc_classes(pid, rsc_tbl);
     unsigned int random_idx = rand() % size;
     unsigned int resource_to_release = allocated_resources[random_idx];
     free(allocated_resources);
@@ -174,46 +171,4 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock) {
 unsigned int get_nanosecs_to_request_release() {
     unsigned int lower_bound = 1000000;
     return (rand() % (TEN_MILLION - lower_bound)) + lower_bound;
-}
-
-bool has_resource(int pid, struct resource_table* rsc_tbl) {
-    unsigned int i;
-    unsigned int num_resources = 0;
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
-        if (num_resources > 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-unsigned int* get_current_alloced_rscs(int pid, struct resource_table* rsc_tbl) {
-    // Returns an array of all resource classes that are currently allocated
-    unsigned int num_resources, num_resource_classes = 0;
-    unsigned int i, j;
-
-    num_resource_classes = get_number_of_allocated_rsc_classes(pid, rsc_tbl);
-
-    unsigned int* allocated_resources = malloc(sizeof(unsigned int) * num_resource_classes);
-    j = 0;
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
-        if (num_resources > 0) {
-            allocated_resources[j++] = i;
-        }
-    }
-    return allocated_resources;
-}
-
-unsigned int get_number_of_allocated_rsc_classes(int pid, struct resource_table* rsc_tbl) {
-    unsigned int num_resources, num_resource_classes = 0;
-    unsigned int i;
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        num_resources = rsc_tbl->rsc_descs[i].allocated[pid];
-        if (num_resources > 0) {
-            num_resource_classes++;
-        }
-    }
-    return num_resource_classes;
 }

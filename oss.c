@@ -104,6 +104,7 @@ int main (int argc, char* argv[]) {
     /*
      *  Main loop
      */
+    print_available_rsc_tbl(rsc_tbl);
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
@@ -116,10 +117,9 @@ int main (int argc, char* argv[]) {
             
             proc_cnt++;
 
-            sprintf(buffer, "OSS: Generating process with PID %d at time %ld:%'ld\n",
+            sprintf(buffer, "OSS: Generating P%d at time %ld:%'ld\n",
                 pid, sysclock->seconds, sysclock->nanoseconds);
             print_and_write(buffer);
-            printf("max claims = %d\n", rsc_tbl->max_claims[pid]);
     
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
@@ -127,7 +127,7 @@ int main (int argc, char* argv[]) {
         // Check for any messages
         for (i = 1; i <= MAX_PROC_CNT; i++) {
             receive_msg_no_wait(rsc_msg_box_id, &rsc_msg_box, i);
-            if (strlen(rsc_msg_box.mtext) < 1) {
+            if (strlen(rsc_msg_box.mtext) == 1) {
                 continue;
             }
 
@@ -140,24 +140,24 @@ int main (int argc, char* argv[]) {
                 rsc[0] = rsc_msg_box.mtext[3];
                 rsc[1] = rsc_msg_box.mtext[4];
                 resource = atoi(rsc);
-                sprintf(buffer, "OSS: Process %d requesting resource %d at time %ld:%'ld\n",
+                sprintf(buffer, "OSS: P%d requesting R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
 
                 // Run Bankers Algorithm to detect if we can grant this resource or not
                 bool rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
                 if (rsc_granted) {
-                    sprintf(buffer, "OSS: Granting Process %d resource %d at time %ld:%'ld\n",
+                    sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                     print_and_write(buffer);
                     rsc_tbl->rsc_descs[resource].allocated[i]++;
-                    // TBD: send message back to the process to let it know 
-                    // that its request has been granted
+                    // Send message back to user program to let it know that its request was granted
+                    send_msg(rsc_msg_box_id, &rsc_msg_box, i);
                 }
                 else {
                     // TBD: Put in blocked queue
                     // TBD: blocked queue will need struct with resource and pid
-                    sprintf(buffer, "OSS: Blocking Process %d for requesting resource %d at time %ld:%'ld\n",
+                    sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld\n",
                         i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                     print_and_write(buffer);
                     // Let the process stay waiting on a message from OSS
@@ -169,21 +169,25 @@ int main (int argc, char* argv[]) {
                 rsc[0] = rsc_msg_box.mtext[3];
                 rsc[1] = rsc_msg_box.mtext[4];
                 resource = atoi(rsc);
-                sprintf(buffer, "OSS: Process %d released resource %d at time %ld:%'ld\n",
+                sprintf(buffer, "OSS: P%d released R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
+                rsc_tbl->rsc_descs[resource].allocated[i]--;
                 // TBD: Check to see if we can unblock any processes
             }
             else {
                 // TERMINATING
                 childpids[i] = 0;
                 proc_cnt--;
-                // TBD: That process is releasing all its resources so update accordingly
+                // Process is releasing all its resources so update resource table
+                release_resources(rsc_tbl, i);
                 // TBD: Check to see if we can unblock any processes
-                sprintf(buffer, "OSS: Process %d terminated at time %ld:%'ld\n",
+                sprintf(buffer, "OSS: P%d terminated at time %ld:%'ld\n",
                     i, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer);
             }
+            sprintf(buffer, "\n");
+            print_and_write(buffer);
         }
 
         increment_clock(sysclock, get_nanoseconds());
@@ -198,6 +202,7 @@ int main (int argc, char* argv[]) {
     print_and_write(buffer);
 
     print_allocated_rsc_tbl(rsc_tbl);
+    print_available_rsc_tbl(rsc_tbl);
 
     cleanup_and_exit();
 
@@ -328,7 +333,7 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 1000000) + 100001; // 100,000 - 1,000,000 inclusive
+    return (rand() % 30000) + 5001; // 100,000 - 1,000,000 inclusive
 }
 
 unsigned int get_available_pid() {

@@ -11,9 +11,13 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int req
     unsigned int i, j;
 
     unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
-    if (allocated_resources[requested_resource] == rsc_tbl->rsc_descs[requested_resource].total) {
+    unsigned int total = rsc_tbl->rsc_descs[requested_resource].total;
+    unsigned int alloced = allocated_resources[requested_resource];
+
+    if (total == alloced) {
         // All resources in this resource class have already been allocated so
         // we cannot grant the request
+        printf("OSS: Rejecting becuase allocated == total\n");
         return 0;
     }
     else {
@@ -124,7 +128,7 @@ unsigned int* get_allocated_resources(struct resource_table* rsc_tbl) {
     unsigned int* allocated_resources = malloc(sizeof(unsigned int) * NUM_RSC_CLS);
     for (i = 0; i < NUM_RSC_CLS; i++) {
         for (j = 1; j <= MAX_PROC_CNT; j++) {
-            allocated_resources[i] += rsc_tbl->rsc_descs[i].allocated[j];
+            allocated_resources[i] = rsc_tbl->rsc_descs[i].allocated[j];
         }
     }
     return allocated_resources;

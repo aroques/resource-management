@@ -7,7 +7,7 @@
 #define NUM_RSC_CLS 20
 #define MAX_PROC_CNT 18
 
-bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, unsigned int requested_resource) {
+bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, int requested_resource) {
     unsigned int i, j;
     
     // We grant the request and then check if there is a safe state

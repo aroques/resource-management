@@ -134,7 +134,7 @@ bool has_resource(int pid, struct resource_table* rsc_tbl) {
     return 0;
 }
 
-bool resource_is_available(struct resource_table* rsc_tbl, unsigned int requested_resource) {
+bool resource_is_available(struct resource_table* rsc_tbl, int requested_resource) {
     unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
     unsigned int currently_allocated = allocated_resources[requested_resource];
     unsigned int total = rsc_tbl->rsc_descs[requested_resource].total;
@@ -157,6 +157,10 @@ unsigned int* get_available_resources(struct resource_table* rsc_tbl) {
     for (i = 0; i < NUM_RSC_CLS; i++) {
         available_resources[i] = total_resources[i] - allocated_resources[i];
     }
+    
+    free(allocated_resources);
+    free(total_resources);
+    
     return available_resources;
 }
 

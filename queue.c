@@ -11,9 +11,9 @@ void init_queue(struct Queue *q) {
     q->count = 0;
 }
 
-void enqueue(struct Queue *q, int x) {
+void enqueue(struct Queue *q, blocked_id x) {
     if (q->count >= QUEUESIZE)
-    printf("Warning: queue overflow enqueue x=%d\n",x);
+    printf("Warning: queue overflow enqueue x=%d\n",x.pid);
     else {
             q->last = (q->last+1) % QUEUESIZE;
             q->q[ q->last ] = x;    
@@ -21,8 +21,8 @@ void enqueue(struct Queue *q, int x) {
     }
 }
 
-int dequeue(struct Queue *q) {
-    int x;
+blocked_id dequeue(struct Queue *q) {
+    blocked_id x;
 
     if (q->count <= 0) printf("Warning: empty queue dequeue.\n");
     else {
@@ -42,13 +42,12 @@ bool empty(struct Queue *q) {
 void print_queue(struct Queue *q) {
     int i;
 
-    i=q->first; 
+    i = q->first; 
     
     while (i != q->last) {
-        printf("%c ",q->q[i]);
+        printf("Blocked ID: %d: {PID: %d, RSC: %d}\n", i, q->q[i].pid, q->q[i].resource);
         i = (i+1) % QUEUESIZE;
     }
 
-    printf("%2d ",q->q[i]);
-    printf("\n");
+    printf("Blocked ID: %d: {PID: %d, RSC: %d}\n", i, q->q[i].pid, q->q[i].resource);
 }

@@ -32,5 +32,7 @@ bool resource_is_available(struct resource_table* rsc_tbl, int requested_resourc
 unsigned int* get_allocated_resources(struct resource_table* rsc_tbl);
 unsigned int* get_available_resources(struct resource_table* rsc_tbl);
 unsigned int* get_total_resources(struct resource_table* rsc_tbl);
+void print_resources(unsigned int* resources, char* title, FILE* fp);
+void print_rsc_summary(struct resource_table* rsc_tbl, FILE* fp);
 
 #endif

@@ -7,25 +7,44 @@
 
 #define BUF_SIZE 1800
 
-void print_available_rsc_tbl(struct resource_table* rsc_tbl, FILE* fp) {
-    int i, j, available;
+void print_rsc_summary(struct resource_table* rsc_tbl, FILE* fp) {
+    unsigned int* total_resources = get_total_resources(rsc_tbl);
+    unsigned int* allocated_resources = get_allocated_resources(rsc_tbl);
+    unsigned int* available = get_available_resources(rsc_tbl);
+
+    char buffer[100];
+
+    sprintf(buffer, "%48s", "Resource Summary\n");
+    print_and_write(buffer, fp);
+
+    print_resources(total_resources, "Total Resources\n", fp);
+    print_resources(allocated_resources, "Allocated Resources\n", fp);
+    print_resources(available, "Available Resources\n", fp);
+
+    free(total_resources);
+    free(allocated_resources);
+    free(available);
+}
+
+void print_resources(unsigned int* resources, char* title, FILE* fp) {
+    int i;
     char buffer[BUF_SIZE];
+    
+    // Print title
     sprintf(buffer, "\n");
-    sprintf(buffer + strlen(buffer), "%61s", "Current Available System Resources\n");
-    sprintf(buffer + strlen(buffer),"     ");
-    // print column titles
+    sprintf(buffer + strlen(buffer), "%s", title);
+    
+    // Print column titles
+    sprintf(buffer + strlen(buffer), "  ");
     for (i = 0; i < NUM_RSC_CLS; i++) {
         sprintf(buffer + strlen(buffer),"R%-3d", i+1);
     }
     sprintf(buffer + strlen(buffer),"\n");
-    for (i = 1; i <= MAX_PROC_CNT; i++) {
-        sprintf(buffer + strlen(buffer),"P%-4d", i);
-        // print all resources allocated for process i
-        for (j = 0; j < NUM_RSC_CLS; j++) {
-            available = rsc_tbl->rsc_descs[j].total - rsc_tbl->rsc_descs[j].allocated[i];
-            sprintf(buffer + strlen(buffer),"%-4d", available);
-        }
-        sprintf(buffer + strlen(buffer),"\n");
+    
+    // Print data
+    sprintf(buffer + strlen(buffer), "  ");
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        sprintf(buffer + strlen(buffer),"%-4d", resources[i]);
     }
     sprintf(buffer + strlen(buffer),"\n");
     print_and_write(buffer, fp);

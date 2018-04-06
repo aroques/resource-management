@@ -31,7 +31,6 @@ void fork_child(char** execv_arr, unsigned int pid);
 struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
-int get_rsc_from_msg(char* mtext);
 struct message parse_msg(char* mtext);
 
 // Globals used in signal handler
@@ -64,7 +63,8 @@ int main (int argc, char* argv[]) {
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
     gettimeofday(&tv_start, NULL);
-    //struct Queue blocked;                       // Holds processes that are blocked on resources
+    struct Queue blocked;                       // Holds processes that are blocked on resources
+    init_queue(&blocked);
     unsigned int proc_cnt = 0;                  // Holds total number of active child processes
 
     struct clock time_to_fork = get_clock();    // Holds time to schedule new process
@@ -110,7 +110,7 @@ int main (int argc, char* argv[]) {
     /*
      *  Main loop
      */
-    print_available_rsc_tbl(rsc_tbl, fp);
+    print_rsc_summary(rsc_tbl, fp);
 
     struct msqid_ds msgq_ds;
     msgq_ds.msg_qnum = 0;
@@ -142,10 +142,11 @@ int main (int argc, char* argv[]) {
         while (num_messages > 0) {
             
             receive_msg(rsc_msg_box_id, &rsc_msg_box, 0);
-            if (strlen(rsc_msg_box.mtext) < 4) {
+            num_messages--;
+
+            if (strlen(rsc_msg_box.mtext) < 5) {
                 // Every once in awhile, the message text is too short to be a real message and will cause segmentation faults if we continue
-                // So, just loop and try again
-                num_messages--;
+                // So, just try again
                 continue;
             }
 
@@ -181,8 +182,8 @@ int main (int argc, char* argv[]) {
                     rsc_tbl->rsc_descs[resource].allocated[pid]++;
                     num_resources_granted++;
                     
-                    // Print table of allocated resources
                     if (num_resources_granted % 20 == 0) {
+                        // Print table of allocated resources
                         print_allocated_rsc_tbl(rsc_tbl, fp);
                     }
 
@@ -196,7 +197,7 @@ int main (int argc, char* argv[]) {
                     print_and_write(buffer, fp);
 
                     // TBD: Put in blocked queue
-                    // TBD: blocked queue will need struct with resource and pid
+                    
                     // Let the process stay waiting on a message from OSS
                 }
 
@@ -228,7 +229,6 @@ int main (int argc, char* argv[]) {
             }
             sprintf(buffer, "\n");
             print_and_write(buffer, fp);
-            num_messages--;
         }
 
         increment_clock(sysclock, get_nanoseconds());
@@ -243,7 +243,11 @@ int main (int argc, char* argv[]) {
     print_and_write(buffer, fp);
 
     print_allocated_rsc_tbl(rsc_tbl, fp);
-    print_available_rsc_tbl(rsc_tbl, fp);
+    print_rsc_summary(rsc_tbl, fp);
+
+    sprintf(buffer, "\n");
+    print_and_write(buffer, fp);
+    
 
     cleanup_and_exit();
 
@@ -382,13 +386,6 @@ unsigned int get_available_pid() {
         break;
     }
     return pid;
-}
-
-int get_rsc_from_msg(char* mtext) {
-    char resource[2];
-    resource[0] = mtext[3];
-    resource[1] = mtext[4];
-    return atoi(resource);
 }
 
 struct message parse_msg(char* mtext) {

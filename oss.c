@@ -63,8 +63,13 @@ int main (int argc, char* argv[]) {
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
     gettimeofday(&tv_start, NULL);
-    struct Queue blocked;                       // Holds processes that are blocked on resources
-    init_queue(&blocked);
+    struct Queue blocked[NUM_RSC_CLS];          // Array of blocked queues (1 for each resource)
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        struct Queue bq;
+        init_queue(&bq);
+        blocked[i] = bq;
+    }
+
     unsigned int proc_cnt = 0;                  // Holds total number of active child processes
 
     struct clock time_to_fork = get_clock();    // Holds time to schedule new process
@@ -117,6 +122,8 @@ int main (int argc, char* argv[]) {
 
     struct message msg;
     int resource;
+    bool rsc_granted, rsc_is_available;
+    char reason[50];
 
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
@@ -161,9 +168,9 @@ int main (int argc, char* argv[]) {
                     pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
-                bool rsc_granted = 0;
-                bool rsc_is_available = resource_is_available(rsc_tbl, resource);
-                char reason[50] = "resource is unavailable";
+                rsc_granted = 0;
+                rsc_is_available = resource_is_available(rsc_tbl, resource);
+                reason = "resource is unavailable";
                 
                 if (rsc_is_available) {
                     // Resource is available so run bankers algorithm to check if we grant
@@ -196,9 +203,8 @@ int main (int argc, char* argv[]) {
                         pid, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
                     print_and_write(buffer, fp);
 
-                    // TBD: Put in blocked queue
-                    
-                    // Let the process stay waiting on a message from OSS
+                    // Add process to blocked queue
+                    enqueue(&blocked[resource], pid);
                 }
 
             }
@@ -248,6 +254,12 @@ int main (int argc, char* argv[]) {
     sprintf(buffer, "\n");
     print_and_write(buffer, fp);
     
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        if (empty(&blocked[i])) {
+            continue;
+        }
+        print_queue(&blocked[i]);
+    }
 
     cleanup_and_exit();
 
@@ -400,4 +412,8 @@ struct message parse_msg(char* mtext) {
     free(msg_info);
 
     return msg;
+}
+
+void grant_resource() {
+    
 }

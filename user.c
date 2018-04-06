@@ -32,6 +32,7 @@ void send_termination_notification(int rsc_msg_box_id, int pid);
 
 #define ONE_HUNDRED_MILLION 100000000 // 100ms in nanoseconds
 #define TEN_MILLION 10000000 // 10ms in nanoseconds
+#define ONE_MILLION 10000000 // 1ms in nanoseconds
 
 const unsigned int CHANCE_TERMINATE = 10;
 const unsigned int CHANCE_RELEASE = 1;
@@ -87,14 +88,15 @@ int main (int argc, char *argv[]) {
 
 void send_termination_notification(int rsc_msg_box_id, int pid) {
     struct msgbuf rsc_msg_box;
-    sprintf(rsc_msg_box.mtext, "TERM");
+    sprintf(rsc_msg_box.mtext, "%d,TERM,0", pid);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid); 
 }
 
 void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_tbl) {
     struct msgbuf rsc_msg_box;
     unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
-    sprintf(rsc_msg_box.mtext, "RLS%d", resource_to_release);
+    sprintf(rsc_msg_box.mtext, "%d,RLS,%d", pid, resource_to_release);
+    printf("user %d releasing resource %d\n", pid, resource_to_release+1);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     return;
 }
@@ -104,7 +106,8 @@ void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     create_msg_that_contains_rsc(rsc_msg_box.mtext, pid, rsc_tbl);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     // Blocking receive - wait until granted a resource
-    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid);
+    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
+    //printf("user %d granted resource\n", pid);
     // Granted a resource
     return;
 }
@@ -134,7 +137,8 @@ void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* r
         max_claims = rsc_tbl->max_claims[pid];
     } while (num_currently_allocated == max_claims);
     // We currently do not have more of this resource allocated then our max claims limits
-    sprintf(mtext, "REQ%d", resource_to_request);
+    printf("user %d requesting resource %d\n", pid, resource_to_request+1);
+    sprintf(mtext, "%d,REQ,%d", pid, resource_to_request);
 }
 
 unsigned int get_random_resource() {
@@ -169,6 +173,6 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock) {
 }
 
 unsigned int get_nanosecs_to_request_release() {
-    unsigned int lower_bound = 1000000;
-    return (rand() % (TEN_MILLION - lower_bound)) + lower_bound;
+    unsigned int lower_bound = 100000;
+    return (rand() % (ONE_MILLION - lower_bound)) + lower_bound;
 }

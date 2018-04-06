@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 char** split_string(char* str, char* delimeter);
+void free_strings(char** arr, int size);
 char* get_timestamp();
 void print_usage();
 void parse_cmd_line_args(int argc, char* argv[]);

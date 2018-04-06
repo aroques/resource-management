@@ -139,7 +139,6 @@ bool resource_is_available(struct resource_table* rsc_tbl, int requested_resourc
     unsigned int currently_allocated = allocated_resources[requested_resource];
     unsigned int total = rsc_tbl->rsc_descs[requested_resource].total;
     free(allocated_resources);
-    printf("current allocated = %d, total = %d\n", currently_allocated, total);
     if (currently_allocated == total) {
         // All resources in this resource class have already been allocated so
         // the resource is not available

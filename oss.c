@@ -32,6 +32,7 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
 int get_rsc_from_msg(char* mtext);
+struct message parse_msg(char* mtext);
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -40,6 +41,12 @@ struct resource_table* rsc_tbl;
 int cleaning_up = 0;
 pid_t* childpids;
 FILE* fp;
+
+struct message {
+    int pid;
+    char txt[10];
+    int resource;
+};
 
 int main (int argc, char* argv[]) {
     /*
@@ -52,7 +59,7 @@ int main (int argc, char* argv[]) {
     setlocale(LC_NUMERIC, "");                  // For comma separated integers in printf
     srand(time(NULL) ^ getpid());
 
-    unsigned int i, pid;
+    unsigned int i, pid, num_resources_granted = 0, num_messages = 0;
     char buffer[255];                           // Used to hold output that will be printed and written to log file
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
@@ -105,6 +112,12 @@ int main (int argc, char* argv[]) {
      *  Main loop
      */
     print_available_rsc_tbl(rsc_tbl, fp);
+
+    struct msqid_ds msgq_ds;
+    msgq_ds.msg_qnum = 0;
+
+    struct message msg;
+
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
@@ -121,18 +134,34 @@ int main (int argc, char* argv[]) {
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
 
+        // Get number of messages
+        msgctl(rsc_msg_box_id, IPC_STAT, &msgq_ds);
+        num_messages = msgq_ds.msg_qnum;
+
         // Check for any messages
-        for (i = 1; i <= MAX_PROC_CNT; i++) {
-            receive_msg_no_wait(rsc_msg_box_id, &rsc_msg_box, i);
-            if (strlen(rsc_msg_box.mtext) == 1) {
+        while (num_messages > 0) {
+            sprintf(buffer, "Number of messages in queue: %d\n", num_messages);
+            print_and_write(buffer, fp);
+            
+            receive_msg(rsc_msg_box_id, &rsc_msg_box, 0);
+            printf("message: %s\n", rsc_msg_box.mtext);
+            if (strlen(rsc_msg_box.mtext) < 4) {
+                // Every once in awhile, the message text is too short to be a real message
+                // and will cause segmentation faults if we continue 
+                // So just loop and try again
+                num_messages--;
                 continue;
             }
+            // if (strlen(rsc_msg_box.mtext) == 1) {
+            //     continue;
+            // }
+            // We received a message from a user process
+            msg = parse_msg(rsc_msg_box.mtext);
 
-            strncpy(notification_type, rsc_msg_box.mtext, 3);
+            int resource = msg.resource;
+            i = msg.pid;
 
-            int resource = get_rsc_from_msg(rsc_msg_box.mtext);
-
-            if (strcmp(notification_type, "REQ") == 0) {
+            if (strcmp(msg.txt, "REQ") == 0) {
                 // Process i is requesting a resource
                 sprintf(buffer, "OSS: P%d requesting R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
@@ -157,9 +186,15 @@ int main (int argc, char* argv[]) {
 
                     // Update program state
                     rsc_tbl->rsc_descs[resource].allocated[i]++;
+                    num_resources_granted++;
+                    
+                    // Print table of allocated resources
+                    if (num_resources_granted % 20 == 0) {
+                        print_allocated_rsc_tbl(rsc_tbl, fp);
+                    }
 
                     // Send message back to user program to let it know that it's request was granted
-                    send_msg(rsc_msg_box_id, &rsc_msg_box, i);
+                    send_msg(rsc_msg_box_id, &rsc_msg_box, i+MAX_PROC_CNT);
                 }
                 else {
                     // Resource was not granted
@@ -173,7 +208,7 @@ int main (int argc, char* argv[]) {
                 }
 
             }
-            else if (strcmp(notification_type, "RLS") == 0) {
+            else if (strcmp(msg.txt, "RLS") == 0) {
                 // Process i is releasing a resource
                 sprintf(buffer, "OSS: P%d released R%d at time %ld:%'ld\n",
                     i, resource+1, sysclock->seconds, sysclock->nanoseconds);
@@ -200,6 +235,7 @@ int main (int argc, char* argv[]) {
             }
             sprintf(buffer, "\n");
             print_and_write(buffer, fp);
+            num_messages--;
         }
 
         increment_clock(sysclock, get_nanoseconds());
@@ -340,7 +376,7 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 30000) + 5001; // 100,000 - 1,000,000 inclusive
+    return (rand() % 1000000) + 250000; // 100,000 - 1,000,000 inclusive
 }
 
 unsigned int get_available_pid() {
@@ -360,4 +396,22 @@ int get_rsc_from_msg(char* mtext) {
     resource[0] = mtext[3];
     resource[1] = mtext[4];
     return atoi(resource);
+}
+
+struct message parse_msg(char* mtext) {
+    struct message msg;
+    char ** msg_info = split_string(mtext, ",");
+    printf("OSS: Parsing received message\n");
+    printf("mtext: %s\n", mtext);
+    
+    msg.pid = atoi(msg_info[0]);
+    printf("msg.pid = %d\n", msg.pid);
+    strcpy(msg.txt, msg_info[1]);
+    printf("msg.txt = %s\n", msg.txt);
+    msg.resource = atoi(msg_info[2]);
+    printf("msg.resource = %d\n", msg.resource);
+    printf("freeing msg_info\n");
+    free(msg_info);
+
+    return msg;
 }

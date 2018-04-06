@@ -9,15 +9,14 @@
 #include "helpers.h"
 
 char** split_string(char* str, char* delimeter) {
+    char** strings = malloc(10 * sizeof(char*));
     char* substr;
-    char** strings = malloc(10 * sizeof(char));
 
     substr = strtok(str, delimeter);
 
     int i = 0;
     while (substr != NULL)
     {
-        strings[i] = malloc(20 * sizeof(char));
         strings[i] = substr;
         substr = strtok(NULL, delimeter);
         i++;
@@ -26,6 +25,16 @@ char** split_string(char* str, char* delimeter) {
     return strings;
 
 }
+
+void free_strings(char** arr, int size) {
+    free(arr);
+    // int i; 
+    // for (i = 0; i < size; i++) {
+    //     free(arr[i]);
+    // }
+    // free(arr);
+}
+
 
 char* get_timestamp() {
     char* timestamp = malloc(sizeof(char)*10);

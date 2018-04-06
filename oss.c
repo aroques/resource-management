@@ -88,7 +88,6 @@ int main (int argc, char* argv[]) {
     // Shared resource message box for user processes to request/release resources 
     rsc_msg_box_id = get_message_queue();
     struct msgbuf rsc_msg_box;
-    char notification_type[10];
 
     // Holds all childpids
     childpids = malloc(sizeof(pid_t) * (MAX_PROC_CNT + 1));
@@ -117,6 +116,7 @@ int main (int argc, char* argv[]) {
     msgq_ds.msg_qnum = 0;
 
     struct message msg;
+    int resource;
 
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
@@ -140,31 +140,24 @@ int main (int argc, char* argv[]) {
 
         // Check for any messages
         while (num_messages > 0) {
-            sprintf(buffer, "Number of messages in queue: %d\n", num_messages);
-            print_and_write(buffer, fp);
             
             receive_msg(rsc_msg_box_id, &rsc_msg_box, 0);
-            printf("message: %s\n", rsc_msg_box.mtext);
             if (strlen(rsc_msg_box.mtext) < 4) {
-                // Every once in awhile, the message text is too short to be a real message
-                // and will cause segmentation faults if we continue 
-                // So just loop and try again
+                // Every once in awhile, the message text is too short to be a real message and will cause segmentation faults if we continue
+                // So, just loop and try again
                 num_messages--;
                 continue;
             }
-            // if (strlen(rsc_msg_box.mtext) == 1) {
-            //     continue;
-            // }
+
             // We received a message from a user process
             msg = parse_msg(rsc_msg_box.mtext);
-
-            int resource = msg.resource;
-            i = msg.pid;
+            resource = msg.resource;
+            pid = msg.pid;
 
             if (strcmp(msg.txt, "REQ") == 0) {
                 // Process i is requesting a resource
                 sprintf(buffer, "OSS: P%d requesting R%d at time %ld:%'ld\n",
-                    i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
                 bool rsc_granted = 0;
@@ -174,18 +167,18 @@ int main (int argc, char* argv[]) {
                 if (rsc_is_available) {
                     // Resource is available so run bankers algorithm to check if we grant
                     // safely grant this request
-                    rsc_granted = bankers_algorithm(rsc_tbl, i, resource);
+                    rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
                     sprintf(reason, "granting this resource would lead to an unsafe state");
                 }
                 
                 if (rsc_granted) {
                     // Resource granted
                     sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
-                        i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                     print_and_write(buffer, fp);
 
                     // Update program state
-                    rsc_tbl->rsc_descs[resource].allocated[i]++;
+                    rsc_tbl->rsc_descs[resource].allocated[pid]++;
                     num_resources_granted++;
                     
                     // Print table of allocated resources
@@ -194,12 +187,12 @@ int main (int argc, char* argv[]) {
                     }
 
                     // Send message back to user program to let it know that it's request was granted
-                    send_msg(rsc_msg_box_id, &rsc_msg_box, i+MAX_PROC_CNT);
+                    send_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
                 }
                 else {
                     // Resource was not granted
                     sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld because %s\n",
-                        i, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
+                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
                     print_and_write(buffer, fp);
 
                     // TBD: Put in blocked queue
@@ -211,24 +204,24 @@ int main (int argc, char* argv[]) {
             else if (strcmp(msg.txt, "RLS") == 0) {
                 // Process i is releasing a resource
                 sprintf(buffer, "OSS: P%d released R%d at time %ld:%'ld\n",
-                    i, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
                 
                 // Update program state
-                rsc_tbl->rsc_descs[resource].allocated[i]--;
+                rsc_tbl->rsc_descs[resource].allocated[pid]--;
 
                 // TBD: Check to see if we can unblock any processes
             }
             else {
                 // Process i terminated
                 sprintf(buffer, "OSS: P%d terminated at time %ld:%'ld\n",
-                    i, sysclock->seconds, sysclock->nanoseconds);
+                    pid, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
                 // Update program state
-                childpids[i] = 0;
+                childpids[pid] = 0;
                 proc_cnt--;
-                release_resources(rsc_tbl, i); // Updates resource table
+                release_resources(rsc_tbl, pid); // Updates resource table
                 
                 // TBD: Check to see if we can unblock any processes
 
@@ -399,18 +392,14 @@ int get_rsc_from_msg(char* mtext) {
 }
 
 struct message parse_msg(char* mtext) {
+    // Parse a message sent from a user process
     struct message msg;
     char ** msg_info = split_string(mtext, ",");
-    printf("OSS: Parsing received message\n");
-    printf("mtext: %s\n", mtext);
     
     msg.pid = atoi(msg_info[0]);
-    printf("msg.pid = %d\n", msg.pid);
     strcpy(msg.txt, msg_info[1]);
-    printf("msg.txt = %s\n", msg.txt);
     msg.resource = atoi(msg_info[2]);
-    printf("msg.resource = %d\n", msg.resource);
-    printf("freeing msg_info\n");
+
     free(msg_info);
 
     return msg;

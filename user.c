@@ -35,7 +35,7 @@ void send_termination_notification(int rsc_msg_box_id, int pid);
 #define ONE_MILLION 10000000 // 1ms in nanoseconds
 
 const unsigned int CHANCE_TERMINATE = 10;
-const unsigned int CHANCE_RELEASE = 1;
+const unsigned int CHANCE_RELEASE = 40;
 
 int main (int argc, char *argv[]) {
     add_signal_handlers();
@@ -96,7 +96,6 @@ void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     struct msgbuf rsc_msg_box;
     unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
     sprintf(rsc_msg_box.mtext, "%d,RLS,%d", pid, resource_to_release);
-    printf("user %d releasing resource %d\n", pid, resource_to_release+1);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     return;
 }
@@ -107,7 +106,6 @@ void request_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
     // Blocking receive - wait until granted a resource
     receive_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
-    //printf("user %d granted resource\n", pid);
     // Granted a resource
     return;
 }
@@ -137,7 +135,6 @@ void create_msg_that_contains_rsc(char* mtext, int pid, struct resource_table* r
         max_claims = rsc_tbl->max_claims[pid];
     } while (num_currently_allocated == max_claims);
     // We currently do not have more of this resource allocated then our max claims limits
-    printf("user %d requesting resource %d\n", pid, resource_to_request+1);
     sprintf(mtext, "%d,REQ,%d", pid, resource_to_request);
 }
 

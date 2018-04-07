@@ -35,6 +35,17 @@ int dequeue(struct Queue *q) {
     return(x);
 }
 
+int peek(struct Queue *q) {
+    int x;
+
+    if (q->count <= 0) printf("Warning: empty queue dequeue.\n");
+    else {
+        x = q->q[ q->first ];
+    }
+
+    return(x);
+}
+
 bool empty(struct Queue *q) {
     if (q->count <= 0) return (1);
     else return (0);

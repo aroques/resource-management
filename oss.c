@@ -32,6 +32,9 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
 struct message parse_msg(char* mtext);
+void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box);
+
+unsigned int num_resources_granted = 0;
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -40,6 +43,7 @@ struct resource_table* rsc_tbl;
 int cleaning_up = 0;
 pid_t* childpids;
 FILE* fp;
+struct Queue* blocked;
 
 struct message {
     int pid;
@@ -63,7 +67,7 @@ int main (int argc, char* argv[]) {
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
     gettimeofday(&tv_start, NULL);
-    struct Queue blocked[NUM_RSC_CLS];          // Array of blocked queues (1 for each resource)
+    blocked = malloc(sizeof(struct Queue) * NUM_RSC_CLS);          // Array of blocked queues (1 for each resource)
     for (i = 0; i < NUM_RSC_CLS; i++) {
         struct Queue bq;
         init_queue(&bq);
@@ -163,14 +167,14 @@ int main (int argc, char* argv[]) {
             pid = msg.pid;
 
             if (strcmp(msg.txt, "REQ") == 0) {
-                // Process i is requesting a resource
-                sprintf(buffer, "OSS: P%d requesting R%d at time %ld:%'ld\n",
+                // Process is requesting a resource
+                sprintf(buffer, "OSS: Detected P%d requesting R%d at time %ld:%'ld\n",
                     pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
                 rsc_granted = 0;
                 rsc_is_available = resource_is_available(rsc_tbl, resource);
-                reason = "resource is unavailable";
+                sprintf(reason, "resource is unavailable");
                 
                 if (rsc_is_available) {
                     // Resource is available so run bankers algorithm to check if we grant
@@ -209,19 +213,21 @@ int main (int argc, char* argv[]) {
 
             }
             else if (strcmp(msg.txt, "RLS") == 0) {
-                // Process i is releasing a resource
-                sprintf(buffer, "OSS: P%d released R%d at time %ld:%'ld\n",
+                // Process is releasing a resource
+                sprintf(buffer, "OSS: Acknowledging that P%d released R%d at time %ld:%'ld\n",
                     pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
                 
                 // Update program state
                 rsc_tbl->rsc_descs[resource].allocated[pid]--;
 
-                // TBD: Check to see if we can unblock any processes
+                // Check if we can unblock any processes
+                unblock_process_if_possible(resource, rsc_msg_box);
+
             }
             else {
-                // Process i terminated
-                sprintf(buffer, "OSS: P%d terminated at time %ld:%'ld\n",
+                // Process terminated
+                sprintf(buffer, "OSS: Acknowledging that P%d terminated at time %ld:%'ld\n",
                     pid, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
@@ -230,7 +236,10 @@ int main (int argc, char* argv[]) {
                 proc_cnt--;
                 release_resources(rsc_tbl, pid); // Updates resource table
                 
-                // TBD: Check to see if we can unblock any processes
+                for (i = 0; i < NUM_RSC_CLS; i++) {
+                    // Check if we can unblock any processes
+                    unblock_process_if_possible(i, rsc_msg_box);   
+                }
 
             }
             sprintf(buffer, "\n");
@@ -374,6 +383,7 @@ void cleanup_and_exit() {
     wait_for_all_children();
     cleanup_shared_memory(simulated_clock_id, sysclock);
     cleanup_shared_memory(rsc_tbl_id, rsc_tbl);
+    free(blocked);
     fclose(fp);
     exit(0);
 }
@@ -414,6 +424,38 @@ struct message parse_msg(char* mtext) {
     return msg;
 }
 
-void grant_resource() {
+void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
+    if (empty(&blocked[resource])) {
+        return;
+    }
+
+    char reason[50];
+    char buffer [100];
+
+    int pid = peek(&blocked[resource]);
+
+    // Resource is available so run bankers algorithm to check if we grant
+    // safely grant this request
+    bool rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
+    sprintf(reason, "granting this resource would lead to an unsafe state");
     
+    if (rsc_granted) {
+        // Resource granted
+        sprintf(buffer, "OSS: Unblocking P%d and granting it R%d at time %ld:%'ld\n",
+            pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
+        print_and_write(buffer, fp);
+
+        // Update program state
+        rsc_tbl->rsc_descs[resource].allocated[pid]++;
+        num_resources_granted++;
+        dequeue(&blocked[resource]);
+        
+        if (num_resources_granted % 20 == 0) {
+            // Print table of allocated resources
+            print_allocated_rsc_tbl(rsc_tbl, fp);
+        }
+
+        // Send message back to user program to let it know that it's request was granted
+        send_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
+    }
 }

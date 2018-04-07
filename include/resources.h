@@ -6,6 +6,7 @@
 
 #define NUM_RSC_CLS 20
 #define MAX_PROC_CNT 18
+#define MAX_CLAIMS 4 // Upper bound of max number of a resource class a process can claim 
 
 struct resource_descriptor {
     unsigned int total;

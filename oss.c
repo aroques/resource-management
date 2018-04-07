@@ -237,8 +237,11 @@ int main (int argc, char* argv[]) {
                 release_resources(rsc_tbl, pid); // Updates resource table
                 
                 for (i = 0; i < NUM_RSC_CLS; i++) {
-                    // Check if we can unblock any processes
-                    unblock_process_if_possible(i, rsc_msg_box);   
+                    int j;
+                    for (j = 0; j < MAX_CLAIMS; j++) {
+                        // Check if we can unblock any processes
+                        unblock_process_if_possible(i, rsc_msg_box);   
+                    }
                 }
 
             }
@@ -434,7 +437,7 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
 
     int pid = peek(&blocked[resource]);
 
-    // Resource is available so run bankers algorithm to check if we grant
+    // Resource is available so run bankers algorithm to check if we can
     // safely grant this request
     bool rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
     sprintf(reason, "granting this resource would lead to an unsafe state");

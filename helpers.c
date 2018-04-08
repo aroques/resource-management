@@ -26,16 +26,6 @@ char** split_string(char* str, char* delimeter) {
 
 }
 
-void free_strings(char** arr, int size) {
-    free(arr);
-    // int i; 
-    // for (i = 0; i < size; i++) {
-    //     free(arr[i]);
-    // }
-    // free(arr);
-}
-
-
 char* get_timestamp() {
     char* timestamp = malloc(sizeof(char)*10);
     time_t rawtime;
@@ -48,20 +38,25 @@ char* get_timestamp() {
     return timestamp;
 }
 
-void parse_cmd_line_args(int argc, char* argv[]) {
+bool parse_cmd_line_args(int argc, char* argv[]) {
     int option;
-    while ((option = getopt (argc, argv, "h")) != -1)
+    bool verbose = 0;
+    while ((option = getopt (argc, argv, "hv")) != -1)
     switch (option) {
         case 'h':
             print_usage();
             break;
+        case 'v':
+            verbose = 1;
+            break;
         default:
             print_usage();
     }
+    return verbose;
 }
 
 void print_usage() {
-    fprintf(stderr, "Usage: oss\n");
+    fprintf(stderr, "Usage: oss [-v for verbose mode]\n");
     exit(0);
 }
 

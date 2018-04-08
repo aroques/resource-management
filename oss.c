@@ -67,6 +67,8 @@ int main (int argc, char* argv[]) {
     setlocale(LC_NUMERIC, "");                  // For comma separated integers in printf
     srand(time(NULL) ^ getpid());
 
+    bool verbose = parse_cmd_line_args(argc, argv);
+
     unsigned int i, pid = 0, num_messages = 0;
     char buffer[255];                           // Used to hold output that will be printed and written to log file
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
@@ -128,20 +130,17 @@ int main (int argc, char* argv[]) {
     struct message msg;
     int resource;
     bool rsc_granted, rsc_is_available;
-    char reason[50];
+    // char reason[50];
 
     // Used for statisitcs
     unsigned int num_requests = 0;
-    struct clock time_blocked[MAX_PROC_CNT];
+    struct clock time_blocked[MAX_PROC_CNT+1];
     for (i = 1; i <= MAX_PROC_CNT; i++) {
-        struct clock c = get_clock();
-        time_blocked[i] = c;
+        time_blocked[i].seconds = 0;
+        time_blocked[i].nanoseconds = 0;
     }
     total_time_blocked = malloc(sizeof(struct clock));
-    total_time_blocked->seconds = 0;
-    total_time_blocked->nanoseconds = 0;
-
-    print_rsc_summary(rsc_tbl, fp);
+    reset_clock(total_time_blocked);
 
     /*
      *  Main loop
@@ -154,10 +153,13 @@ int main (int argc, char* argv[]) {
             rsc_tbl->max_claims[pid] = get_max_resource_claims();
             fork_child(execv_arr, pid);
             proc_cnt++;
+            
+            if (verbose) {
+                sprintf(buffer, "OSS: Generating P%d at time %ld:%'ld\n",
+                    pid, sysclock->seconds, sysclock->nanoseconds);
+                print_and_write(buffer, fp);
+            }
 
-            sprintf(buffer, "OSS: Generating P%d at time %ld:%'ld\n",
-                pid, sysclock->seconds, sysclock->nanoseconds);
-            print_and_write(buffer, fp);
     
             time_to_fork = get_time_to_fork_new_proc(*sysclock);
         }
@@ -185,15 +187,17 @@ int main (int argc, char* argv[]) {
 
             if (strcmp(msg.txt, "REQ") == 0) {
                 // Process is requesting a resource
-                sprintf(buffer, "OSS: Detected P%d requesting R%d at time %ld:%'ld\n",
-                    pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer, fp);
+                if (verbose) {
+                    sprintf(buffer, "OSS: Detected P%d requesting R%d at time %ld:%'ld\n",
+                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    print_and_write(buffer, fp);
+                }
 
                 num_requests++;
 
                 rsc_granted = 0;
                 rsc_is_available = resource_is_available(rsc_tbl, resource);
-                sprintf(reason, "resource is unavailable");
+                // sprintf(reason, "resource is unavailable");
                 
                 if (rsc_is_available) {
                     // Resource is available so run bankers algorithm to check if we grant
@@ -202,14 +206,16 @@ int main (int argc, char* argv[]) {
                     increment_clock(sysclock, get_work());
                     num_bankers_ran++;
 
-                    sprintf(reason, "granting this resource would lead to an unsafe state");
+                    // sprintf(reason, "granting this resource would lead to an unsafe state");
                 }
                 
                 if (rsc_granted) {
                     // Resource granted
-                    sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
-                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                    print_and_write(buffer, fp);
+                    if (verbose) {
+                        sprintf(buffer, "OSS: Granting P%d R%d at time %ld:%'ld\n",
+                            pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                        print_and_write(buffer, fp);
+                    }
 
                     // Update program state
                     rsc_tbl->rsc_descs[resource].allocated[pid]++;
@@ -225,8 +231,10 @@ int main (int argc, char* argv[]) {
                 }
                 else {
                     // Resource was not granted
-                    sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld because %s\n",
-                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
+                    // sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld because %s\n",
+                    //     pid, resource+1, sysclock->seconds, sysclock->nanoseconds, reason);
+                    sprintf(buffer, "OSS: Blocking P%d for requesting R%d at time %ld:%'ld\n",
+                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                     print_and_write(buffer, fp);
 
                     // Add process to blocked queue
@@ -239,10 +247,12 @@ int main (int argc, char* argv[]) {
             }
             else if (strcmp(msg.txt, "RLS") == 0) {
                 // Process is releasing a resource
-                sprintf(buffer, "OSS: Acknowledging that P%d released R%d at time %ld:%'ld\n",
-                    pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer, fp);
-                
+                if (verbose) {
+                    sprintf(buffer, "OSS: Acknowledging that P%d released R%d at time %ld:%'ld\n",
+                        pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
+                    print_and_write(buffer, fp);
+                }
+
                 // Update program state
                 rsc_tbl->rsc_descs[resource].allocated[pid]--;
 
@@ -255,9 +265,11 @@ int main (int argc, char* argv[]) {
             }
             else {
                 // Process terminated
-                sprintf(buffer, "OSS: Acknowledging that P%d terminated at time %ld:%'ld\n",
-                    pid, sysclock->seconds, sysclock->nanoseconds);
-                print_and_write(buffer, fp);
+                if (verbose) {
+                    sprintf(buffer, "OSS: Acknowledging that P%d terminated at time %ld:%'ld\n",
+                        pid, sysclock->seconds, sysclock->nanoseconds);
+                    print_and_write(buffer, fp);
+                }
 
                 // Update program state
                 childpids[pid] = 0;
@@ -275,8 +287,10 @@ int main (int argc, char* argv[]) {
                 }
 
             }
-            sprintf(buffer, "\n");
-            print_and_write(buffer, fp);
+            if (verbose) {
+                sprintf(buffer, "\n");
+                print_and_write(buffer, fp);
+            }
 
             // Increment clock slightly whenever a resource is granted or released
             increment_clock(sysclock, get_work());
@@ -290,7 +304,8 @@ int main (int argc, char* argv[]) {
     }
 
     // Print information before exiting
-    sprintf(buffer, "OSS: Exiting because %d seconds have been passed\n", TOTAL_RUNTIME);
+    sprintf(buffer, "OSS: Exiting at time %'ld:%'ld because %d seconds have been passed\n", 
+        sysclock->seconds, sysclock->nanoseconds, TOTAL_RUNTIME);
     print_and_write(buffer, fp);
 
     print_allocated_rsc_tbl(rsc_tbl, fp);
@@ -474,7 +489,7 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box, struct
         return;
     }
 
-    char reason[50];
+    // char reason[50];
     char buffer [100];
 
     int pid = peek(&blocked[resource]);
@@ -485,7 +500,7 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box, struct
     increment_clock(sysclock, get_work());
     num_bankers_ran++;
 
-    sprintf(reason, "granting this resource would lead to an unsafe state");
+    // sprintf(reason, "granting this resource would lead to an unsafe state");
     
     if (rsc_granted) {
         // Resource granted
@@ -501,7 +516,6 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box, struct
         // Add wait time to total time blocked
         struct clock wait_time = subtract_clocks(*sysclock, time_blocked[pid]);
         *total_time_blocked = add_clocks(*total_time_blocked, wait_time);
-        time_blocked[pid] = get_clock();
         
         if (num_resources_granted % 20 == 0) {
             // Print table of allocated resources

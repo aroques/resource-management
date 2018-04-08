@@ -61,7 +61,7 @@ bool bankers_algorithm(struct resource_table* rsc_tbl, int pid, int requested_re
     free(available_resources);
     free(work);
     free(can_finish);
-    destroy_array(needs);
+    free(needs);
 
     return safe_sequence_exists;
 }

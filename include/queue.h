@@ -8,7 +8,7 @@
 #define QUEUESIZE 18
 
 struct Queue {
-        int q[QUEUESIZE+1];		        /* body of queue */
+        int q[QUEUESIZE+2];		        /* body of queue */
         int first;                      /* position of first element */
         int last;                       /* position of last element */
         int count;                      /* number of queue elements */

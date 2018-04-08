@@ -34,8 +34,8 @@ void send_termination_notification(int rsc_msg_box_id, int pid);
 #define TEN_MILLION 10000000 // 10ms in nanoseconds
 #define ONE_MILLION 10000000 // 1ms in nanoseconds
 
-const unsigned int CHANCE_TERMINATE = 30;
-const unsigned int CHANCE_RELEASE = 80;
+const unsigned int CHANCE_TERMINATE = 25;
+const unsigned int CHANCE_RELEASE = 50;
 
 int main (int argc, char *argv[]) {
     add_signal_handlers();

@@ -32,7 +32,7 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock);
 unsigned int get_nanoseconds();
 unsigned int get_available_pid();
 struct message parse_msg(char* mtext);
-void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box);
+void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box, struct clock* time_blocked);
 unsigned int get_work();
 void print_blocked_queue();
 void print_statistics(unsigned int num_requests);
@@ -42,7 +42,8 @@ unsigned int num_resources_granted = 0, num_bankers_ran = 0;
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
-struct clock* sysclock;                                 
+struct clock* sysclock;
+struct clock* total_time_blocked;                                 
 struct resource_table* rsc_tbl;
 int cleaning_up = 0;
 pid_t* childpids;
@@ -131,6 +132,14 @@ int main (int argc, char* argv[]) {
 
     // Used for statisitcs
     unsigned int num_requests = 0;
+    struct clock time_blocked[MAX_PROC_CNT];
+    for (i = 1; i <= MAX_PROC_CNT; i++) {
+        struct clock c = get_clock();
+        time_blocked[i] = c;
+    }
+    total_time_blocked = malloc(sizeof(struct clock));
+    total_time_blocked->seconds = 0;
+    total_time_blocked->nanoseconds = 0;
 
     print_rsc_summary(rsc_tbl, fp);
 
@@ -222,6 +231,9 @@ int main (int argc, char* argv[]) {
 
                     // Add process to blocked queue
                     enqueue(&blocked[resource], pid);
+                    
+                    // Record the time the process was blocked
+                    time_blocked[pid] = *sysclock;
                 }
 
             }
@@ -238,7 +250,7 @@ int main (int argc, char* argv[]) {
                 send_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
 
                 // Check if we can unblock any processes
-                unblock_process_if_possible(resource, rsc_msg_box);
+                unblock_process_if_possible(resource, rsc_msg_box, time_blocked);
 
             }
             else {
@@ -258,7 +270,7 @@ int main (int argc, char* argv[]) {
                     // the process had it's MAX resources allocated to it
                     for (j = 0; j < MAX_CLAIMS; j++) {
                         // Check if we can unblock any processes
-                        unblock_process_if_possible(i, rsc_msg_box);   
+                        unblock_process_if_possible(i, rsc_msg_box, time_blocked);   
                     }
                 }
 
@@ -405,6 +417,7 @@ void cleanup_and_exit() {
     cleanup_shared_memory(simulated_clock_id, sysclock);
     cleanup_shared_memory(rsc_tbl_id, rsc_tbl);
     free(blocked);
+    free(total_time_blocked);
     fclose(fp);
     exit(0);
 }
@@ -449,7 +462,7 @@ struct message parse_msg(char* mtext) {
     return msg;
 }
 
-void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
+void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box, struct clock* time_blocked) {
     if (empty(&blocked[resource])) {
         // There are no processes blocked on this resource
         return;
@@ -484,6 +497,11 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
         rsc_tbl->rsc_descs[resource].allocated[pid]++;
         num_resources_granted++;
         dequeue(&blocked[resource]);
+
+        // Add wait time to total time blocked
+        struct clock wait_time = subtract_clocks(*sysclock, time_blocked[pid]);
+        *total_time_blocked = add_clocks(*total_time_blocked, wait_time);
+        time_blocked[pid] = get_clock();
         
         if (num_resources_granted % 20 == 0) {
             // Print table of allocated resources
@@ -521,7 +539,7 @@ void print_blocked_queue() {
     }
     
     if (queue_is_empty) {
-        sprintf(buffer + strlen(buffer), "  <no blocked processes>\n");
+        sprintf(buffer + strlen(buffer), "  < no blocked processes >\n");
     }
     
     sprintf(buffer + strlen(buffer), "\n");
@@ -536,7 +554,7 @@ void print_statistics(unsigned int num_requests) {
     sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Requests Granted", num_resources_granted);
     sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Total Requests", num_requests);
     sprintf(buffer + strlen(buffer), "  %-23s: %.2f%%\n", "Pct Requests Granted", pct_requests_granted(num_requests));
-    sprintf(buffer + strlen(buffer), "  %-23s: %'d:%'d\n", "Total Wait Time", 0, 0);
+    sprintf(buffer + strlen(buffer), "  %-23s: %'ld:%'ld\n", "Total Wait Time", total_time_blocked->seconds, total_time_blocked->nanoseconds);
     sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Deadlock Avoidance Ran", num_bankers_ran);
 
     sprintf(buffer + strlen(buffer), "\n");

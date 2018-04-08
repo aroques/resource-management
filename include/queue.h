@@ -20,3 +20,4 @@ int dequeue(struct Queue *q);
 bool empty(struct Queue *q);
 void print_queue(struct Queue *q);
 int peek(struct Queue *q);
+char* get_queue_string(struct Queue *q);

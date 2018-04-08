@@ -33,6 +33,8 @@ unsigned int get_nanoseconds();
 unsigned int get_available_pid();
 struct message parse_msg(char* mtext);
 void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box);
+unsigned int get_work();
+void print_blocked_queue();
 
 unsigned int num_resources_granted = 0;
 
@@ -180,6 +182,8 @@ int main (int argc, char* argv[]) {
                     // Resource is available so run bankers algorithm to check if we grant
                     // safely grant this request
                     rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
+                    increment_clock(sysclock, get_work());
+
                     sprintf(reason, "granting this resource would lead to an unsafe state");
                 }
                 
@@ -221,6 +225,9 @@ int main (int argc, char* argv[]) {
                 // Update program state
                 rsc_tbl->rsc_descs[resource].allocated[pid]--;
 
+                // Send message back to user program to let it know that we updated the resource table
+                send_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
+
                 // Check if we can unblock any processes
                 unblock_process_if_possible(resource, rsc_msg_box);
 
@@ -238,6 +245,8 @@ int main (int argc, char* argv[]) {
                 
                 for (i = 0; i < NUM_RSC_CLS; i++) {
                     int j;
+                    // Check MAX_CLAIMS times for each resource in case 
+                    // the process had it's MAX resources allocated to it
                     for (j = 0; j < MAX_CLAIMS; j++) {
                         // Check if we can unblock any processes
                         unblock_process_if_possible(i, rsc_msg_box);   
@@ -247,6 +256,9 @@ int main (int argc, char* argv[]) {
             }
             sprintf(buffer, "\n");
             print_and_write(buffer, fp);
+
+            // Increment clock slightly whenever a resource is granted or released
+            increment_clock(sysclock, get_work());
         }
 
         increment_clock(sysclock, get_nanoseconds());
@@ -266,12 +278,7 @@ int main (int argc, char* argv[]) {
     sprintf(buffer, "\n");
     print_and_write(buffer, fp);
     
-    for (i = 0; i < NUM_RSC_CLS; i++) {
-        if (empty(&blocked[i])) {
-            continue;
-        }
-        print_queue(&blocked[i]);
-    }
+    print_blocked_queue();
 
     cleanup_and_exit();
 
@@ -398,7 +405,11 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 1000000) + 250000; // 100,000 - 1,000,000 inclusive
+    return (rand() % 1000000) + 250000; // 250,000 - 1,000,000 inclusive
+}
+
+unsigned int get_work() {
+    return (rand() % 100000) + 10000; // 10,000 - 100,000 inclusive
 }
 
 unsigned int get_available_pid() {
@@ -429,6 +440,13 @@ struct message parse_msg(char* mtext) {
 
 void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
     if (empty(&blocked[resource])) {
+        // There are no processes blocked on this resource
+        return;
+    }
+
+    bool rsc_is_available = resource_is_available(rsc_tbl, resource);
+    if (!rsc_is_available) {
+        // Resource is unavaible
         return;
     }
 
@@ -440,6 +458,7 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
     // Resource is available so run bankers algorithm to check if we can
     // safely grant this request
     bool rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
+    increment_clock(sysclock, get_work());
     sprintf(reason, "granting this resource would lead to an unsafe state");
     
     if (rsc_granted) {
@@ -461,4 +480,38 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
         // Send message back to user program to let it know that it's request was granted
         send_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
     }
+}
+
+void print_blocked_queue() {
+    int i;
+    bool queue_is_empty = 1;
+    char buffer[1000];
+    char* queue;
+    
+    sprintf(buffer, "Blocked Processes\n");
+    for (i = 0; i < NUM_RSC_CLS; i++) {
+        if (empty(&blocked[i])) {
+            // Queue empty
+            continue;
+        }
+        
+        // Resource label
+        sprintf(buffer + strlen(buffer), "  R%2d:", i+1);
+        
+        // What processes are blocked on resource i
+        queue = get_queue_string(&blocked[i]);
+        sprintf(buffer + strlen(buffer), "%s", queue);
+        free(queue);
+        
+        // Queue is not empty
+        queue_is_empty = 0;
+    }
+    
+    if (queue_is_empty) {
+        sprintf(buffer + strlen(buffer), "  <no blocked processes>\n");
+    }
+    
+    sprintf(buffer + strlen(buffer), "\n");
+
+    print_and_write(buffer, fp);
 }

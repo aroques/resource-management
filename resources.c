@@ -106,7 +106,7 @@ unsigned int get_max_resource_claims() {
 void release_resources(struct resource_table* rsc_tbl, int pid) {
     unsigned int i;
     for (i = 0; i < NUM_RSC_CLS; i++) {
-        rsc_tbl->rsc_descs[i].allocated[pid]--;    
+        rsc_tbl->rsc_descs[i].allocated[pid] = 0; 
     }
 }
 

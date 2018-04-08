@@ -34,8 +34,8 @@ void send_termination_notification(int rsc_msg_box_id, int pid);
 #define TEN_MILLION 10000000 // 10ms in nanoseconds
 #define ONE_MILLION 10000000 // 1ms in nanoseconds
 
-const unsigned int CHANCE_TERMINATE = 10;
-const unsigned int CHANCE_RELEASE = 40;
+const unsigned int CHANCE_TERMINATE = 30;
+const unsigned int CHANCE_RELEASE = 80;
 
 int main (int argc, char *argv[]) {
     add_signal_handlers();
@@ -61,10 +61,10 @@ int main (int argc, char *argv[]) {
         // Time to request/release a resource 
         if (!has_resource(pid, rsc_tbl)) {
             request_a_resource(rsc_msg_box_id, pid, rsc_tbl);
-            // if (will_terminate()) {
-            //     send_termination_notification(rsc_msg_box_id, pid);
-            //     break;
-            // }
+            if (will_terminate()) {
+                send_termination_notification(rsc_msg_box_id, pid);
+                break;
+            }
         }
         else {
             // Determine if we are going to request or release a resource
@@ -73,10 +73,10 @@ int main (int argc, char *argv[]) {
             }
             else {
                 request_a_resource(rsc_msg_box_id, pid, rsc_tbl);
-                // if (will_terminate()) {
-                //     send_termination_notification(rsc_msg_box_id, pid);
-                //     break;
-                // }
+                if (will_terminate()) {
+                    send_termination_notification(rsc_msg_box_id, pid);
+                    break;
+                }
             }
         }
         // Get new time to request/release a resouce
@@ -97,6 +97,9 @@ void release_a_resource(int rsc_msg_box_id, int pid, struct resource_table* rsc_
     unsigned int resource_to_release = get_resource_to_release(pid, rsc_tbl);
     sprintf(rsc_msg_box.mtext, "%d,RLS,%d", pid, resource_to_release);
     send_msg(rsc_msg_box_id, &rsc_msg_box, pid);
+    // Blocking receive: wait until OSS updates the program state 
+    // so that we do not release the same resource many times
+    receive_msg(rsc_msg_box_id, &rsc_msg_box, pid+MAX_PROC_CNT);
     return;
 }
 
@@ -171,5 +174,5 @@ struct clock get_time_to_request_release_rsc(struct clock sysclock) {
 
 unsigned int get_nanosecs_to_request_release() {
     unsigned int lower_bound = 100000;
-    return (rand() % (ONE_MILLION - lower_bound)) + lower_bound;
+    return (rand() % (800000 - lower_bound)) + lower_bound;
 }

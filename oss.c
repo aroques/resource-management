@@ -35,8 +35,10 @@ struct message parse_msg(char* mtext);
 void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box);
 unsigned int get_work();
 void print_blocked_queue();
+void print_statistics(unsigned int num_requests);
+float pct_requests_granted(unsigned int num_requests);
 
-unsigned int num_resources_granted = 0;
+unsigned int num_resources_granted = 0, num_bankers_ran = 0;
 
 // Globals used in signal handler
 int simulated_clock_id, rsc_tbl_id, rsc_msg_box_id;
@@ -64,7 +66,7 @@ int main (int argc, char* argv[]) {
     setlocale(LC_NUMERIC, "");                  // For comma separated integers in printf
     srand(time(NULL) ^ getpid());
 
-    unsigned int i, pid, num_resources_granted = 0, num_messages = 0;
+    unsigned int i, pid = 0, num_messages = 0;
     char buffer[255];                           // Used to hold output that will be printed and written to log file
     unsigned int elapsed_seconds = 0;           // Holds total real-time seconds the program has run
     struct timeval tv_start, tv_stop;           // Used to calculated real elapsed time
@@ -118,11 +120,7 @@ int main (int argc, char* argv[]) {
     // Increment current time so it is time to fork a user process
     *sysclock = time_to_fork;
 
-    /*
-     *  Main loop
-     */
-    print_rsc_summary(rsc_tbl, fp);
-
+    // Declare more variables needed in main loop
     struct msqid_ds msgq_ds;
     msgq_ds.msg_qnum = 0;
 
@@ -131,6 +129,14 @@ int main (int argc, char* argv[]) {
     bool rsc_granted, rsc_is_available;
     char reason[50];
 
+    // Used for statisitcs
+    unsigned int num_requests = 0;
+
+    print_rsc_summary(rsc_tbl, fp);
+
+    /*
+     *  Main loop
+     */
     while ( elapsed_seconds < TOTAL_RUNTIME ) {
         // Check if it is time to fork a new user process
         if (compare_clocks(*sysclock, time_to_fork) >= 0 && proc_cnt < MAX_PROC_CNT) {
@@ -174,6 +180,8 @@ int main (int argc, char* argv[]) {
                     pid, resource+1, sysclock->seconds, sysclock->nanoseconds);
                 print_and_write(buffer, fp);
 
+                num_requests++;
+
                 rsc_granted = 0;
                 rsc_is_available = resource_is_available(rsc_tbl, resource);
                 sprintf(reason, "resource is unavailable");
@@ -183,6 +191,7 @@ int main (int argc, char* argv[]) {
                     // safely grant this request
                     rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
                     increment_clock(sysclock, get_work());
+                    num_bankers_ran++;
 
                     sprintf(reason, "granting this resource would lead to an unsafe state");
                 }
@@ -279,6 +288,8 @@ int main (int argc, char* argv[]) {
     print_and_write(buffer, fp);
     
     print_blocked_queue();
+
+    print_statistics(num_requests);
 
     cleanup_and_exit();
 
@@ -459,6 +470,8 @@ void unblock_process_if_possible(int resource, struct msgbuf rsc_msg_box) {
     // safely grant this request
     bool rsc_granted = bankers_algorithm(rsc_tbl, pid, resource);
     increment_clock(sysclock, get_work());
+    num_bankers_ran++;
+
     sprintf(reason, "granting this resource would lead to an unsafe state");
     
     if (rsc_granted) {
@@ -514,4 +527,23 @@ void print_blocked_queue() {
     sprintf(buffer + strlen(buffer), "\n");
 
     print_and_write(buffer, fp);
+}
+
+void print_statistics(unsigned int num_requests) {
+    char buffer[1000];
+
+    sprintf(buffer, "Statistics\n");
+    sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Requests Granted", num_resources_granted);
+    sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Total Requests", num_requests);
+    sprintf(buffer + strlen(buffer), "  %-23s: %.2f%%\n", "Pct Requests Granted", pct_requests_granted(num_requests));
+    sprintf(buffer + strlen(buffer), "  %-23s: %'d:%'d\n", "Total Wait Time", 0, 0);
+    sprintf(buffer + strlen(buffer), "  %-23s: %'d\n", "Deadlock Avoidance Ran", num_bankers_ran);
+
+    sprintf(buffer + strlen(buffer), "\n");
+    
+    print_and_write(buffer, fp);
+}
+
+float pct_requests_granted(unsigned int num_requests) {
+    return  (num_resources_granted / (float) num_requests) * 100;
 }

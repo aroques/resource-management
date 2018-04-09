@@ -2,7 +2,13 @@
 
 **OSS (operating system similator)** is a program that simulates an operating system.
 
-Resources are managed by OSS. User processes request resources. OSS will then check if that resources is available. If the resource is available, then OSS will run the Banker's Algorithm to check if there is a safe sequence after the resource is granted. If there is a safe sequence, then OSS will grant the resource. A *safe sequence* is an ordering of processes. For example, <P2, P4, P0, P1, P3> could be a safe sequence and that would mean that P2 could finish executing and then would release its resources. Then P4 would finish executing and release its resources, and so on until all the processes have finished executing and all the resources have been released. Thus, a safe sequence gurantees that there cannot be a deadlock.
+Resources are managed by OSS. User processes request resources. OSS will then check if that resources is available. If the resource is available, then OSS will run the Banker's Algorithm to check if there is a safe sequence after the resource is granted. If there is a safe sequence, then OSS will grant the resource. If there is *not* a safe sequence then OSS will put the requesting process in a blocked queue. OSS will check the blocked queue every time a resource is released to see if any blocked processes can be unblocked.
+
+### Safe Sequences
+A *safe sequence* is an ordering of processes. For example, <P2, P4, P0, P1, P3> could be a safe sequence and that would mean that P2 could finish executing and then would release its resources. Then, P4 would finish executing and release its resources, and so on until all the processes have finished executing and all the resources have been released. Thus, a safe sequence gurantees that there cannot be a deadlock.
+
+### OSS and User Process Communication
+User processes communicate to OSS that they are requesting or releasing a resource by sending OSS a message through a *message queue*. After sending a message to request/release a resource, the user process will use a blocking receive to receive a response message from OSS. Thus, the user process will not continue executing until a response is received.
 
 ### Program Hanging
 The program has a low probability to stall for a reason that I have not been able to figure out. If that happens, then press ctrl-c to exit the program and try running it again.

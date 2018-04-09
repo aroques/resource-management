@@ -169,10 +169,9 @@ int main (int argc, char* argv[]) {
         num_messages = msgq_ds.msg_qnum;
 
         // Check for any messages
-        while (num_messages > 0) {
+        if (num_messages > 0) {
             
             receive_msg(rsc_msg_box_id, &rsc_msg_box, 0);
-            num_messages--;
 
             if (strlen(rsc_msg_box.mtext) < 5) {
                 // Every once in awhile, the message text is too short to be a real message and will cause segmentation faults if we continue
@@ -444,7 +443,7 @@ struct clock get_time_to_fork_new_proc(struct clock sysclock) {
 }
 
 unsigned int get_nanoseconds() {
-    return (rand() % 1000000) + 250000; // 250,000 - 1,000,000 inclusive
+    return (rand() % 800000) + 10000; // 800,000 - 10,000 inclusive
 }
 
 unsigned int get_work() {
